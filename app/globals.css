@@ -367,5 +367,5 @@ body {
 @media (max-width: 768px) {
   .app-wrapper { padding: 12px; }
   .header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .steps-bar { grid-template-columns: 1fr; }
+  .steps-bar { display: none; }
 }
