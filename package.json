@@ -10,17 +10,14 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.4",
-    "mongodb": "^7.1.0",
+    "@clerk/themes": "^2.4.52",
     "mongoose": "^9.2.1",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "recharts": "^3.7.0"
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4"
+    "eslint-config-next": "16.1.6"
   }
 }
