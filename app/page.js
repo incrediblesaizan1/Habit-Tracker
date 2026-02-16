@@ -25,7 +25,11 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
 
   if (!loaded) {
-    return <div style={{ background: "#0b1120", minHeight: "100vh" }} />;
+    return (
+      <div className="loader-container">
+        <div className="spinner" />
+      </div>
+    );
   }
 
   return (

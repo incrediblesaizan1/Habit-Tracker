@@ -130,7 +130,7 @@ body {
 }
 .week-header-row th.week-span { background: rgba(20,184,166,0.04); }
 .week-header-row th.col-sn,
-.week-header-row th.col-habits { background: transparent; }
+.week-header-row th.col-habits { background: var(--bg-card); z-index: 20; }
 
 /* Day letter + number headers */
 .day-header-row th {
@@ -144,8 +144,15 @@ body {
 .today-col .day-num { color: var(--accent); }
 .today-col { background: rgba(20,184,166,0.08); }
 
-.col-sn { width: 32px; min-width: 32px; text-align: center; }
-.col-habits { width: 120px; min-width: 120px; text-align: left; padding-left: 12px !important; }
+.col-sn {
+  width: 32px; min-width: 32px; text-align: center;
+  position: sticky; left: 0; z-index: 20; background: var(--bg-card);
+}
+.col-habits {
+  width: 120px; min-width: 120px; text-align: left; padding-left: 12px !important;
+  position: sticky; left: 32px; z-index: 20; background: var(--bg-card);
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1); clip-path: inset(0 -10px 0 0);
+}
 .col-day { width: 28px; min-width: 28px; }
 .col-done { width: 56px; min-width: 56px; }
 .col-total { width: 52px; min-width: 52px; }
@@ -157,9 +164,12 @@ body {
 .habit-table tbody td { border-bottom: 1px solid var(--border); }
 .habit-table tbody td.cell-sn {
   font-size: 12px; font-weight: 600; color: var(--text-muted); text-align: center; padding: 8px 0;
+  position: sticky; left: 0; z-index: 10; background: var(--bg-card);
 }
 .habit-table tbody td.cell-habit {
   text-align: left; padding: 8px 12px; white-space: nowrap;
+  position: sticky; left: 32px; z-index: 10; background: var(--bg-card);
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1); clip-path: inset(0 -10px 0 0);
 }
 .habit-name-row { display: flex; align-items: center; gap: 6px; }
 .habit-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
@@ -357,6 +367,27 @@ body {
 }
 .journal-textarea:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.15); }
 .journal-textarea::placeholder { color: var(--text-muted); }
+
+/* ─── LOADER ─── */
+.loader-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-body);
+}
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border);
+  border-bottom-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1024px) {
