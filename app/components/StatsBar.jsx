@@ -1,7 +1,9 @@
 "use client";
 
 export default function BottomCharts({ dailyVolume, daysInMonth, habits }) {
-  const maxVol = Math.max(...dailyVolume, 1);
+  const totalHabits = habits.length || 1;
+  // Y-axis max = total number of habits (so bars show proportion of habits done each day)
+  const maxVol = Math.max(totalHabits, 1);
 
   // Cumulative data
   const cumulative = [];
@@ -10,14 +12,15 @@ export default function BottomCharts({ dailyVolume, daysInMonth, habits }) {
     runningTotal += dailyVolume[i];
     cumulative.push(runningTotal);
   }
-  const maxCum = Math.max(...cumulative, 1);
+  // Y-axis max = total possible completions (habits × days)
+  const maxCum = Math.max(totalHabits * daysInMonth, 1);
 
   // Daily consistency % data
-  const totalHabits = habits.length || 1;
   const consistency = dailyVolume.map((v) =>
     Math.round((v / totalHabits) * 100),
   );
-  const maxCons = Math.max(...consistency, 1);
+  // Y-axis max = 100% (always full scale for percentage)
+  const maxCons = 100;
 
   // Chart dimensions
   const W = 320,
