@@ -2,8 +2,18 @@
 import { UserButton } from "@clerk/nextjs";
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 export default function RightSidebar({
@@ -62,7 +72,9 @@ export default function RightSidebar({
               <circle className="pr-bg" cx="55" cy="55" r={radius} />
               <circle
                 className="pr-fill"
-                cx="55" cy="55" r={radius}
+                cx="55"
+                cy="55"
+                r={radius}
                 strokeDasharray={circumference}
                 strokeDashoffset={offset}
               />
