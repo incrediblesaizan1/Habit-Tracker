@@ -1,10 +1,19 @@
-import { ClerkProvider, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  SignInButton,
+} from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import "./globals.css";
 
 export const metadata = {
   title: "Habit Tracker",
-  description: "Track your daily habits and build streaks with a beautiful calendar grid.",
+  description:
+    "Track your daily habits and build streaks with a beautiful calendar grid.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -17,7 +26,8 @@ export default function RootLayout({ children }) {
             <div className="auth-gate">
               <div className="auth-card">
                 <h1 className="auth-title">
-                  <span className="accent">SK&apos;</span> HABIT <strong>TRACKER</strong>
+                  <span className="accent">SK&apos;</span> HABIT{" "}
+                  <strong>TRACKER</strong>
                 </h1>
                 <p className="auth-subtitle">
                   Track your daily habits &amp; build consistency

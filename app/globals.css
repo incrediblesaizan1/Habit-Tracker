@@ -112,7 +112,9 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow: visible;
+  height: max-content;
+  min-height: 0;
 }
 .grid-scroll { overflow-x: auto; }
 .habit-table { width: 100%; border-collapse: collapse; min-width: 800px; }
