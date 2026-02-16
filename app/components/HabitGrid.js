@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -16,6 +16,7 @@ export default function HabitGrid({
   const today = new Date();
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
   const todayDate = isCurrentMonth ? today.getDate() : -1;
+  const scrollRef = useRef(null);
 
   // Build day headers with week groupings
   const { dayHeaders, weeks } = useMemo(() => {
@@ -42,8 +43,21 @@ export default function HabitGrid({
     return { dayHeaders: headers, weeks: wks };
   }, [daysInMonth, year, month, todayDate]);
 
+  // Auto-scroll to today
+  useEffect(() => {
+    if (scrollRef.current && todayDate > 0) {
+      // Small timeout to ensure DOM is ready
+      setTimeout(() => {
+        const todayEl = scrollRef.current.querySelector(".today-col");
+        if (todayEl) {
+          todayEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        }
+      }, 100);
+    }
+  }, [year, month, todayDate]);
+
   return (
-    <div className="grid-scroll">
+    <div className="grid-scroll" ref={scrollRef}>
       <table className="habit-table">
         <thead>
           {/* Week group row */}
