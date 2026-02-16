@@ -5,7 +5,7 @@ import Journal from "@/app/models/Journal";
 
 // GET: Fetch all journal entries for the user, sorted by date (desc)
 export async function GET(request) {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -29,7 +29,7 @@ export async function GET(request) {
 
 // POST: Save or update a journal entry
 export async function POST(req) {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
