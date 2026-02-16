@@ -12,7 +12,8 @@ export const metadata = {
   description:
     "Track your daily habits and build streaks with a beautiful calendar grid.",
   icons: {
-    icon: "/logo.svg",
+    icon: "/logo.svg?v=2",
+    apple: "/logo.svg?v=2",
   },
 };
 
