@@ -11,6 +11,9 @@ export const metadata = {
   title: "Habit Tracker",
   description:
     "Track your daily habits and build streaks with a beautiful calendar grid.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({ children }) {

@@ -280,7 +280,7 @@ body {
 .chart-area {
   height: 140px;
   width: 100%;
-  overflow-x: auto; /* Allow scrolling if svg is wide */
+  overflow: hidden;
 }
 .chart-svg {
   width: 100%;
@@ -378,7 +378,7 @@ body {
   width: 100%; min-height: 120px; padding: 14px; background: var(--bg-body);
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   color: var(--text-primary); font-size: 13px; font-family: inherit; line-height: 1.7;
-  resize: vertical; outline: none; transition: border-color 0.2s;
+  resize: none; outline: none; transition: border-color 0.2s;
 }
 .journal-textarea:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.15); }
 .journal-textarea::placeholder { color: var(--text-muted); }
@@ -407,14 +407,31 @@ body {
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1024px) {
   .content-row { grid-template-columns: 1fr; }
-  .charts-row { grid-template-columns: 1fr; }
   .steps-bar { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
+  .charts-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+    padding-bottom: 0;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .charts-row::-webkit-scrollbar { display: none; }
+  .chart-card {
+    min-width: 85vw;
+    scroll-snap-align: center;
+  }
+
+
   .app-wrapper { padding: 12px; overflow-x: hidden; }
   body { overflow-x: hidden; }
   .grid-scroll { overflow-x: auto; max-width: 100vw; }
-  .header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .header { flex-direction: column; align-items: center; gap: 12px; }
+  .header-left { text-align: center; }
+  .header-right { width: 100%; justify-content: center; }
+  .month-title { text-align: center; margin-left: 0; margin-right: 0; }
   .steps-bar { display: none; }
-  .chart-svg { min-width: 500px; }
 }

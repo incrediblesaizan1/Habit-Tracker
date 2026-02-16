@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 
 export default function DailyJournal() {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(
-    today.toISOString().split("T")[0]
+    today.toISOString().split("T")[0],
   );
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
@@ -45,7 +46,7 @@ export default function DailyJournal() {
         setSaving(false);
       }
     },
-    [selectedDate]
+    [selectedDate],
   );
 
   function handleChange(e) {
@@ -60,7 +61,7 @@ export default function DailyJournal() {
 
   const dateLabel = new Date(selectedDate + "T00:00:00").toLocaleDateString(
     "en-US",
-    { weekday: "long", year: "numeric", month: "long", day: "numeric" }
+    { weekday: "long", year: "numeric", month: "long", day: "numeric" },
   );
 
   return (
@@ -72,6 +73,18 @@ export default function DailyJournal() {
           <span className="journal-status">
             {saving ? "Saving..." : saved ? "✓ Saved" : ""}
           </span>
+          <Link
+            href="/journals"
+            className="journal-history-link"
+            style={{
+              marginLeft: "auto",
+              fontSize: "11px",
+              color: "var(--text-muted)",
+              textDecoration: "none",
+            }}
+          >
+            View History →
+          </Link>
         </div>
         <div className="journal-date-picker">
           <input
@@ -90,6 +103,34 @@ export default function DailyJournal() {
         onChange={handleChange}
         rows={6}
       />
+      <div
+        className="journal-footer"
+        style={{
+          marginTop: "12px",
+          display: "flex",
+          justifyContent: "flex-end",
+        }}
+      >
+        <button
+          onClick={() => saveEntry(content)}
+          disabled={saving}
+          className="btn-save-journal"
+          style={{
+            background: "var(--accent)",
+            color: "#fff",
+            border: "none",
+            padding: "8px 16px",
+            borderRadius: "var(--radius-sm)",
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: saving ? "not-allowed" : "pointer",
+            opacity: saving ? 0.7 : 1,
+            transition: "all 0.2s",
+          }}
+        >
+          {saving ? "Saving..." : "Save Entry"}
+        </button>
+      </div>
     </div>
   );
 }
