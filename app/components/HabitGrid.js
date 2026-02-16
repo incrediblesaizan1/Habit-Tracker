@@ -46,11 +46,23 @@ export default function HabitGrid({
   // Auto-scroll to today
   useEffect(() => {
     if (scrollRef.current && todayDate > 0) {
-      // Small timeout to ensure DOM is ready
       setTimeout(() => {
         const todayEl = scrollRef.current.querySelector(".today-col");
         if (todayEl) {
-          todayEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+          // User requested to scroll to "yesterday" on phone view.
+          // We try to find the previous day column. If today is 1st, we stick to today.
+          const yesterdayEl = todayEl.previousElementSibling;
+          const targetEl = yesterdayEl || todayEl;
+          
+          // Sticky columns width is roughly 152px. Subtracting ~180px puts the target 
+          // just to the right of sticky columns.
+          const scrollContainer = scrollRef.current;
+          const targetPos = targetEl.offsetLeft - 180;
+          
+          scrollContainer.scrollTo({
+            left: Math.max(0, targetPos),
+            behavior: "smooth"
+          });
         }
       }, 100);
     }
