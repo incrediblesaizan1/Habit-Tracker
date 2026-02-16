@@ -49,10 +49,15 @@ export default function HabitGrid({
       setTimeout(() => {
         const todayEl = scrollRef.current.querySelector(".today-col");
         if (todayEl) {
-          // User requested to scroll to "yesterday" on phone view.
-          // We try to find the previous day column. If today is 1st, we stick to today.
-          const yesterdayEl = todayEl.previousElementSibling;
-          const targetEl = yesterdayEl || todayEl;
+          // User requested to scroll to "day before yesterday" on phone view.
+          // Try to go back 2 siblings. Fallback to yesterday or today if start of month.
+          let targetEl = todayEl;
+          if (targetEl.previousElementSibling) {
+            targetEl = targetEl.previousElementSibling; // Yesterday
+            if (targetEl.previousElementSibling) {
+              targetEl = targetEl.previousElementSibling; // Day before yesterday
+            }
+          }
           
           // Sticky columns width is roughly 152px. Subtracting ~180px puts the target 
           // just to the right of sticky columns.
