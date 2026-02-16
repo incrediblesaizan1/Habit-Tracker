@@ -32,6 +32,7 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
 /* ─── PAGE LAYOUT ─── */
@@ -116,7 +117,11 @@ body {
   height: max-content;
   min-height: 0;
 }
-.grid-scroll { overflow-x: auto; }
+.grid-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
 .habit-table { width: 100%; border-collapse: collapse; min-width: 800px; }
 .habit-table th, .habit-table td { text-align: center; padding: 0; }
 
@@ -148,12 +153,12 @@ body {
 
 .col-sn {
   width: 32px; min-width: 32px; text-align: center;
-  position: sticky; left: 0; z-index: 20; background: var(--bg-card);
+  position: sticky; left: 0; z-index: 30; background: var(--bg-card);
 }
 .col-habits {
   width: 120px; min-width: 120px; text-align: left; padding-left: 12px !important;
-  position: sticky; left: 32px; z-index: 20; background: var(--bg-card);
-  box-shadow: 2px 0 5px rgba(0,0,0,0.1); clip-path: inset(0 -10px 0 0);
+  position: sticky; left: 32px; z-index: 30; background: var(--bg-card);
+  box-shadow: 2px 0 5px rgba(0,0,0,0.25); clip-path: inset(0 -10px 0 0);
 }
 .col-day { width: 28px; min-width: 28px; }
 .col-done { width: 56px; min-width: 56px; }
@@ -166,12 +171,12 @@ body {
 .habit-table tbody td { border-bottom: 1px solid var(--border); }
 .habit-table tbody td.cell-sn {
   font-size: 12px; font-weight: 600; color: var(--text-muted); text-align: center; padding: 8px 0;
-  position: sticky; left: 0; z-index: 10; background: var(--bg-card);
+  position: sticky; left: 0; z-index: 20; background: var(--bg-card);
 }
 .habit-table tbody td.cell-habit {
   text-align: left; padding: 8px 12px; white-space: nowrap;
-  position: sticky; left: 32px; z-index: 10; background: var(--bg-card);
-  box-shadow: 2px 0 5px rgba(0,0,0,0.1); clip-path: inset(0 -10px 0 0);
+  position: sticky; left: 32px; z-index: 20; background: var(--bg-card);
+  box-shadow: 2px 0 5px rgba(0,0,0,0.25); clip-path: inset(0 -10px 0 0);
 }
 .habit-name-row { display: flex; align-items: center; gap: 6px; }
 .habit-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
