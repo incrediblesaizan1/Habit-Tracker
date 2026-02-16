@@ -112,7 +112,7 @@ body {
   );
   border: 1px solid rgba(30, 58, 95, 0.4);
   border-radius: 16px;
-  padding: 24px;
+  padding: 16px;
   position: relative;
   overflow: hidden;
   transition:
@@ -181,8 +181,8 @@ body {
 
 .habit-table thead th {
   background: linear-gradient(180deg, #1a2332, #152030);
-  padding: 10px 6px;
-  font-size: 11px;
+  padding: 8px 4px; /* Reduced from 10px 6px */
+  font-size: 10px; /* Reduced from 11px */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -209,7 +209,7 @@ body {
 }
 
 .habit-table tbody td {
-  padding: 8px 6px;
+  padding: 6px 4px;
   border-bottom: 1px solid rgba(30, 58, 95, 0.25);
   vertical-align: middle;
   text-align: center;
@@ -291,7 +291,7 @@ body {
 /* Main horizontal layout */
 .main-layout {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   align-items: flex-start;
   margin-bottom: 24px;
 }

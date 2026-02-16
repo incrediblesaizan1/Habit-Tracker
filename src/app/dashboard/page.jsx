@@ -118,36 +118,11 @@ export default function HabitTracker() {
     }
   }, []);
 
-  const addHabit = useCallback(async () => {
-    // Placeholder (Optimistic)
-    const tempId = generateId();
+  const addHabit = useCallback(() => {
+    const tempId = `temp-${Date.now()}`;
     const newHabit = { id: tempId, name: "", completions: {} };
     setHabits((prev) => [...prev, newHabit]);
     setEditingHabit(tempId);
-
-    // We only create on server when we have a name?
-    // Or create immediately with empty name.
-    // The previous logic allowed empty name creation locally.
-    // Let's create it on server with default name "New Habit" or empty if allowed.
-    // My API requires name. Let's provide a default.
-
-    try {
-      const res = await fetch("/api/habits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "New Habit" }), // Default name
-      });
-      if (res.ok) {
-        const savedHabit = await res.json();
-        setHabits((prev) =>
-          prev.map((h) => (h.id === tempId ? savedHabit : h)),
-        );
-        setEditingHabit(savedHabit.id);
-      }
-    } catch (error) {
-      console.error("Failed to add habit", error);
-      setHabits((prev) => prev.filter((h) => h.id !== tempId));
-    }
   }, []);
 
   const updateHabitName = useCallback((id, name) => {
@@ -156,11 +131,48 @@ export default function HabitTracker() {
 
   const saveHabitName = useCallback(async (id, name) => {
     setEditingHabit(null);
+    const finalName = name.trim() || "New Habit";
+
+    // If it's a temporary ID, create a new habit
+    if (id.toString().startsWith("temp-")) {
+      try {
+        // Update local name first to "New Habit" if it was empty
+        setHabits((prev) =>
+          prev.map((h) => (h.id === id ? { ...h, name: finalName } : h)),
+        );
+
+        const res = await fetch("/api/habits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: finalName }),
+        });
+        if (res.ok) {
+          const savedHabit = await res.json();
+          // Replace temp ID with real ID
+          setHabits((prev) => prev.map((h) => (h.id === id ? savedHabit : h)));
+        } else {
+          // Remove if failed?
+          console.error("Failed to create habit");
+          setHabits((prev) => prev.filter((h) => h.id !== id));
+        }
+      } catch (error) {
+        console.error("Failed to add habit", error);
+        setHabits((prev) => prev.filter((h) => h.id !== id));
+      }
+      return;
+    }
+
+    // Otherwise update existing
     try {
+      // Improve optimistic UI to show "New Habit" if empty was sent
+      setHabits((prev) =>
+        prev.map((h) => (h.id === id ? { ...h, name: finalName } : h)),
+      );
+
       await fetch(`/api/habits/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: finalName }),
       });
     } catch (error) {
       console.error("Failed to save name", error);
@@ -274,23 +286,23 @@ export default function HabitTracker() {
     circumference - (stats.overallPercentage / 100) * circumference;
 
   return (
-    <main style={{ maxWidth: 1800, margin: "0 auto", padding: "24px 16px" }}>
+    <main style={{ maxWidth: 1800, margin: "0 auto", padding: "16px 12px" }}>
       <div className="animated-bg" />
       {/* Header */}
-      <header style={{ marginBottom: 32 }}>
+      <header style={{ marginBottom: 20 }}>
         <div
           style={{
             display: "flex",
             flexWrap: "wrap",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 16,
+            gap: 12,
           }}
         >
           <div>
             <h1
               style={{
-                fontSize: 32,
+                fontSize: 24,
                 fontWeight: 900,
                 letterSpacing: "-0.02em",
                 lineHeight: 1.1,
@@ -307,7 +319,7 @@ export default function HabitTracker() {
               </span>{" "}
               <span style={{ color: "#e2e8f0" }}>TRACKER</span>
             </h1>
-            <p style={{ color: "#64748b", marginTop: 4, fontSize: 14 }}>
+            <p style={{ color: "#64748b", marginTop: 4, fontSize: 13 }}>
               Track your daily habits &amp; build consistency
             </p>
           </div>
@@ -334,8 +346,8 @@ export default function HabitTracker() {
                   border: "1px solid #1e3a5f",
                   borderRadius: 8,
                   color: "#e2e8f0",
-                  padding: "8px 12px",
-                  fontSize: 14,
+                  padding: "6px 10px",
+                  fontSize: 13,
                   fontWeight: 600,
                   cursor: "pointer",
                   outline: "none",
@@ -368,8 +380,8 @@ export default function HabitTracker() {
                   border: "1px solid #1e3a5f",
                   borderRadius: 8,
                   color: "#e2e8f0",
-                  padding: "8px 12px",
-                  fontSize: 14,
+                  padding: "6px 10px",
+                  fontSize: 13,
                   fontWeight: 600,
                   cursor: "pointer",
                   outline: "none",
@@ -386,10 +398,10 @@ export default function HabitTracker() {
         </div>
 
         {/* Big month title */}
-        <div style={{ textAlign: "center", margin: "24px 0 8px" }}>
+        <div style={{ textAlign: "center", margin: "16px 0 8px" }}>
           <h2
             style={{
-              fontSize: 28,
+              fontSize: 22,
               fontWeight: 800,
               color: "#e2e8f0",
               letterSpacing: "0.08em",
@@ -418,22 +430,22 @@ export default function HabitTracker() {
           <div
             key={s.step}
             style={{
-              padding: "10px 16px",
+              padding: "8px 12px",
               borderRadius: 8,
               background:
                 "linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05))",
               border: "1px solid rgba(16, 185, 129, 0.2)",
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 6,
             }}
           >
-            <span style={{ fontSize: 16 }}>{s.icon}</span>
+            <span style={{ fontSize: 14 }}>{s.icon}</span>
             <div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "#f59e0b" }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "#f59e0b" }}>
                 ⭐ STEP {s.step}:{" "}
               </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8" }}>
                 {s.text}
               </span>
             </div>
