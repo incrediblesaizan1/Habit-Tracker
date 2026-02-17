@@ -6,23 +6,42 @@ import {
 } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import "./globals.css";
+import fs from "fs";
+import path from "path";
+
+import TransitionProvider from "./components/TransitionProvider";
+import DynamicBackground from "./components/DynamicBackground";
 
 export const metadata = {
   title: "Habit Tracker",
-  description:
-    "Track your daily habits and build streaks with a beautiful calendar grid.",
+  description: "Track your daily habits and build consistency",
   icons: {
-    icon: "/logo.svg?v=2",
-    apple: "/logo.svg?v=2",
+    icon: "/icon.png",
   },
 };
 
-export default function RootLayout({ children }) {
+async function getWallpaperImages() {
+  try {
+    const wallpaperDir = path.join(process.cwd(), "public", "walpaper");
+    const files = await fs.promises.readdir(wallpaperDir);
+    return files.filter((file) => /\.(jpg|jpeg|png|webp|avif)$/i.test(file));
+  } catch (error) {
+    console.error("Error reading wallpaper directory:", error);
+    return [];
+  }
+}
+
+export default async function RootLayout({ children }) {
+  const wallpaperImages = await getWallpaperImages();
+
   return (
     <ClerkProvider appearance={{ baseTheme: dark }}>
       <html lang="en" className="custom-scrollbar2">
         <body>
-          <SignedIn>{children}</SignedIn>
+          <DynamicBackground images={wallpaperImages} />
+          <SignedIn>
+            <TransitionProvider>{children}</TransitionProvider>
+          </SignedIn>
           <SignedOut>
             <div className="auth-gate">
               <div className="auth-card">

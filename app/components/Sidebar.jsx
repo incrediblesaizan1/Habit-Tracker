@@ -1,5 +1,7 @@
 "use client";
 
+import { motion } from "framer-motion";
+
 const MONTH_NAMES = [
   "January",
   "February",
@@ -15,7 +17,7 @@ const MONTH_NAMES = [
   "December",
 ];
 
-export default function RightSidebar({
+export default function Sidebar({
   habits,
   totalCompleted,
   totalCrossed,
@@ -32,8 +34,18 @@ export default function RightSidebar({
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (completionPercent / 100) * circumference;
 
+  const sidebarVariants = {
+    hidden: { opacity: 0, x: 20 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.5, delay: 0.2 } },
+  };
+
   return (
-    <div className="sidebar">
+    <motion.div
+      className="right-sidebar"
+      initial="hidden"
+      animate="visible"
+      variants={sidebarVariants}
+    >
       {/* Habits Stats */}
       <div className="sidebar-card orange-top">
         <div className="stats-section">
@@ -55,13 +67,15 @@ export default function RightSidebar({
           <div className="progress-ring-wrap">
             <svg width="110" height="110" viewBox="0 0 110 110">
               <circle className="pr-bg" cx="55" cy="55" r={radius} />
-              <circle
+              <motion.circle
                 className="pr-fill"
                 cx="55"
                 cy="55"
                 r={radius}
                 strokeDasharray={circumference}
-                strokeDashoffset={offset}
+                initial={{ strokeDashoffset: circumference }}
+                animate={{ strokeDashoffset: offset }}
+                transition={{ duration: 1, ease: "easeOut", delay: 0.5 }}
               />
             </svg>
             <div className="pr-text">
@@ -76,6 +90,6 @@ export default function RightSidebar({
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

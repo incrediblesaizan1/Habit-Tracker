@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -21,6 +22,16 @@ export default function HabitGrid({
   const isCurrentMonth =
     today.getFullYear() === year && today.getMonth() === month;
   const todayDate = isCurrentMonth ? today.getDate() : -1;
+
+  const tableVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  };
+
+  const rowVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: { opacity: 1, x: 0 },
+  };
 
   // Handle cell tap:
   // Single tap: empty → completed (✓), completed → crossed (✕)
@@ -60,19 +71,46 @@ export default function HabitGrid({
     [toggleDay, toggleDayCrossed, isDayCompleted, isDayCrossed],
   );
 
-  // Auto-scroll to today
+  // Auto-scroll to today/yesterday (mobile friendly)
   useEffect(() => {
     if (isCurrentMonth && scrollRef.current) {
-      const todayEl = scrollRef.current.querySelector(".today-col");
-      if (todayEl) {
-        todayEl.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-          inline: "center",
-        });
-      }
+      // Small timeout to ensure DOM is ready
+      setTimeout(() => {
+        const isMobile = window.innerWidth < 768; // Adjust breakpoint as needed
+
+        let targetDay = todayDate;
+        // If mobile and not the 1st of month, target yesterday for better context
+        if (isMobile && todayDate > 1) {
+          targetDay = todayDate - 1;
+        }
+
+        const targetEl = scrollRef.current.querySelector(
+          `[data-day='${targetDay}']`,
+        );
+
+        if (targetEl) {
+          if (isMobile) {
+            // 152px is approx width of sticky columns (32px SN + 120px Habits)
+            // We want the target day to be the first visible column after sticky
+            const stickyWidth = 152;
+            const scrollPos = targetEl.offsetLeft - stickyWidth;
+
+            scrollRef.current.scrollTo({
+              left: scrollPos,
+              behavior: "smooth",
+            });
+          } else {
+            // Desktop: Stick to centering today
+            targetEl.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+              inline: "center",
+            });
+          }
+        }
+      }, 100);
     }
-  }, [isCurrentMonth, year, month]);
+  }, [isCurrentMonth, year, month, todayDate]);
 
   // Build day headers with week groupings
   const { dayHeaders, weeks } = useMemo(() => {
@@ -119,7 +157,12 @@ export default function HabitGrid({
         </span>
       </div>
 
-      <table className="habit-table">
+      <motion.table
+        className="habit-table"
+        initial="hidden"
+        animate="visible"
+        variants={tableVariants}
+      >
         <thead>
           {/* Week group row */}
           <tr className="week-header-row">
@@ -134,12 +177,6 @@ export default function HabitGrid({
                 {w.label}
               </th>
             ))}
-            <th className="col-done" rowSpan={2}>
-              Done
-            </th>
-            <th className="col-total" rowSpan={2}>
-              Total
-            </th>
           </tr>
           {/* Day letters + numbers */}
           <tr className="day-header-row">
@@ -147,39 +184,54 @@ export default function HabitGrid({
               <th
                 key={h.day}
                 className={`col-day ${h.isToday ? "today-col" : ""}`}
+                data-day={h.day}
               >
                 <span className="day-letter">{h.letter}</span>
                 <span className="day-num">{h.day}</span>
               </th>
             ))}
+            <th className="col-done"></th>
+            <th className="col-total"></th>
           </tr>
         </thead>
         <tbody>
-          {habits.map((habit, idx) => {
-            const count = getHabitMonthlyCount(habit.id);
-            const pct =
-              daysInMonth > 0 ? Math.round((count / daysInMonth) * 100) : 0;
+          {habits.map((habit, hIndex) => {
+            const stats = getHabitMonthlyCount(habit.id); // Assuming getHabitMonthlyCount is the equivalent of getHabitStats
+            const currentDate = {
+              year: today.getFullYear(),
+              month: today.getMonth(),
+              day: today.getDate(),
+            };
+
             return (
-              <tr key={habit.id}>
-                <td className="cell-sn">{idx + 1}</td>
+              <motion.tr
+                key={habit.id} // Changed from habit._id to habit.id to match original prop
+                className="habit-row"
+                variants={rowVariants}
+              >
+                <td className="cell-sn">{hIndex + 1}</td>
                 <td className="cell-habit">
                   <div className="habit-name-row">
                     <span className="habit-label">{habit.name}</span>
                     <button
                       className="habit-delete"
-                      onClick={() => removeHabit(habit.id)}
-                      title="Remove"
+                      onClick={() => removeHabit(habit.id)} // Changed from deleteHabit(habit._id) to removeHabit(habit.id)
+                      title="Remove" // Changed from "Delete habit" to "Remove"
                     >
                       ✕
                     </button>
                   </div>
                 </td>
-                {dayHeaders.map((h) => {
-                  const done = isDayCompleted(habit.id, h.day);
-                  const crossed = isDayCrossed(habit.id, h.day);
+                {dayHeaders.map((dayObj) => {
+                  const dateKey = `${year}-${String(month + 1).padStart(
+                    2,
+                    "0",
+                  )}-${String(dayObj.day).padStart(2, "0")}`;
+                  // Re-evaluating status and isFuture based on original logic
+                  const done = isDayCompleted(habit.id, dayObj.day);
+                  const crossed = isDayCrossed(habit.id, dayObj.day);
 
-                  // Auto-cross: past unfilled days since habit was created
-                  const cellDate = new Date(year, month, h.day);
+                  const cellDate = new Date(year, month, dayObj.day);
                   const habitCreated = habit.createdAt
                     ? new Date(habit.createdAt)
                     : null;
@@ -205,16 +257,24 @@ export default function HabitGrid({
 
                   const showCrossed = crossed || autoCrossed;
 
+                  // Determine class
+                  let cellClass = "cell-day";
+                  if (dayObj.isToday) cellClass += " today-cell";
+                  if (done) cellClass += " completed";
+                  if (showCrossed) cellClass += " crossed";
+                  if (autoCrossed) cellClass += " auto-crossed";
+                  if (isFuture) cellClass += " future-cell";
+
                   return (
                     <td
-                      key={h.day}
-                      className={`cell-day ${done ? "completed" : ""} ${showCrossed ? "crossed" : ""} ${autoCrossed ? "auto-crossed" : ""} ${h.isToday ? "today-cell" : ""} ${isFuture ? "future-cell" : ""}`}
+                      key={dayObj.day}
+                      className={cellClass}
                       onClick={() => {
-                        if (!isFuture) handleCellTap(habit.id, h.day);
+                        if (!isFuture) handleCellTap(habit.id, dayObj.day);
                       }}
                       onContextMenu={(e) => {
                         e.preventDefault();
-                        if (!isFuture) toggleDayCrossed(habit.id, h.day);
+                        if (!isFuture) toggleDayCrossed(habit.id, dayObj.day);
                       }}
                     >
                       <div className="checkbox-box">
@@ -224,23 +284,32 @@ export default function HabitGrid({
                     </td>
                   );
                 })}
+
                 <td className="cell-done">
                   <span className="done-text">
-                    {count} / {daysInMonth}
+                    {stats} / {daysInMonth}
                   </span>
                 </td>
                 <td className="cell-total">
                   <span
-                    className={`total-pct ${pct === 0 ? "zero" : "nonzero"}`}
+                    className={`total-pct ${
+                      daysInMonth > 0 &&
+                      Math.round((stats / daysInMonth) * 100) === 0
+                        ? "zero"
+                        : "nonzero"
+                    }`}
                   >
-                    {pct}%
+                    {daysInMonth > 0
+                      ? Math.round((stats / daysInMonth) * 100)
+                      : 0}
+                    %
                   </span>
                 </td>
-              </tr>
+              </motion.tr>
             );
           })}
         </tbody>
-      </table>
+      </motion.table>
     </div>
   );
 }

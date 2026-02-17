@@ -7,6 +7,7 @@ import RightSidebar from "./components/Sidebar";
 import BottomCharts from "./components/StatsBar";
 import AddHabitModal from "./components/AddHabitModal";
 import DailyJournal from "./components/DailyJournal";
+import YearProgress from "./components/YearProgress";
 
 const MONTH_NAMES = [
   "January",
@@ -121,56 +122,38 @@ export default function Home() {
           {MONTH_NAMES[month]} {year}
         </div>
 
-        {/* Steps Bar */}
-        <div className="steps-bar">
-          <div className="step-card s1">
-            <div className="step-icon">📅</div>
-            <span className="step-label">
-              ⭐ <strong>Step 1:</strong> Enter the Year &amp; Month
-            </span>
-          </div>
-          <div className="step-card s2">
-            <div className="step-icon">✏️</div>
-            <span className="step-label">
-              ⭐ <strong>Step 2:</strong> Enter Your Daily Habits
-            </span>
-          </div>
-          <div className="step-card s3">
-            <div className="step-icon">✅</div>
-            <span className="step-label">
-              ⭐ <strong>Step 3:</strong> Check Off Completed Habits
-            </span>
-          </div>
-          <div className="step-card s4">
-            <div className="step-icon">📊</div>
-            <span className="step-label">
-              ⭐ <strong>Step 4:</strong> View Your Progress!
-            </span>
-          </div>
-        </div>
-
         {/* Main Content: Grid + Sidebar */}
         <div className="content-row">
-          <div className="habit-board">
-            <HabitGrid
-              habits={habits}
-              year={year}
-              month={month}
-              daysInMonth={daysInMonth}
-              toggleDay={toggleDay}
-              toggleDayCrossed={toggleDayCrossed}
-              isDayCompleted={isDayCompleted}
-              isDayCrossed={isDayCrossed}
-              getHabitMonthlyCount={getHabitMonthlyCount}
-              removeHabit={removeHabit}
-            />
-            <div className="add-habit-row">
-              <button
-                className="btn-add-habit"
-                onClick={() => setShowModal(true)}
-              >
-                + Add New Habit
-              </button>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              minWidth: 0,
+            }}
+          >
+            <YearProgress />
+            <div className="habit-board">
+              <HabitGrid
+                habits={habits}
+                year={year}
+                month={month}
+                daysInMonth={daysInMonth}
+                toggleDay={toggleDay}
+                toggleDayCrossed={toggleDayCrossed}
+                isDayCompleted={isDayCompleted}
+                isDayCrossed={isDayCrossed}
+                getHabitMonthlyCount={getHabitMonthlyCount}
+                removeHabit={removeHabit}
+              />
+              <div className="add-habit-row">
+                <button
+                  className="btn-add-habit"
+                  onClick={() => setShowModal(true)}
+                >
+                  + Add New Habit
+                </button>
+              </div>
             </div>
           </div>
 
