@@ -199,7 +199,10 @@ export function useHabits() {
     [completions, monthKey]
   );
 
-  const totalPossible = habits.length * daysInMonth;
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  const effectiveDays = isCurrentMonth ? today.getDate() : daysInMonth;
+  const totalPossible = habits.length * effectiveDays;
   const totalCompleted = habits.reduce(
     (sum, h) => sum + getHabitMonthlyCount(h.id),
     0

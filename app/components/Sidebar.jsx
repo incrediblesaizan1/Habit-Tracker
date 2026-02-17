@@ -54,9 +54,6 @@ export default function Sidebar({
           <div className="stats-divider" />
           <div className="stats-missed-label">Total Missed</div>
           <div className="stats-missed-value">{totalCrossed}</div>
-          <div className="stats-divider" />
-          <div className="stats-sub-label">Total Uncompleted</div>
-          <div className="stats-sub-value">{uncompleted}</div>
         </div>
       </div>
 

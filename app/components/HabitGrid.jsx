@@ -287,23 +287,26 @@ export default function HabitGrid({
 
                 <td className="cell-done">
                   <span className="done-text">
-                    {stats} / {daysInMonth}
+                    {stats} / {isCurrentMonth ? todayDate : daysInMonth}
                   </span>
                 </td>
                 <td className="cell-total">
-                  <span
-                    className={`total-pct ${
-                      daysInMonth > 0 &&
-                      Math.round((stats / daysInMonth) * 100) === 0
-                        ? "zero"
-                        : "nonzero"
-                    }`}
-                  >
-                    {daysInMonth > 0
-                      ? Math.round((stats / daysInMonth) * 100)
-                      : 0}
-                    %
-                  </span>
+                  {(() => {
+                    const effectiveDays = isCurrentMonth
+                      ? todayDate
+                      : daysInMonth;
+                    const pct =
+                      effectiveDays > 0
+                        ? Math.round((stats / effectiveDays) * 100)
+                        : 0;
+                    return (
+                      <span
+                        className={`total-pct ${pct === 0 ? "zero" : "nonzero"}`}
+                      >
+                        {pct}%
+                      </span>
+                    );
+                  })()}
                 </td>
               </motion.tr>
             );
