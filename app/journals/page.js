@@ -1,12 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 
 export default function JournalsPage() {
+  const { user } = useUser();
   const [journals, setJournals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedId, setExpandedId] = useState(null);
+  const [selectedEntry, setSelectedEntry] = useState(null);
 
   useEffect(() => {
     async function fetchJournals() {
@@ -29,25 +31,16 @@ export default function JournalsPage() {
     if (!entry.content || !entry.content.trim()) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    const dateStr = new Date(entry.date + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-    }).toLowerCase();
-    return (
-      entry.content?.toLowerCase().includes(q) || dateStr.includes(q)
-    );
+    const dateStr = new Date(entry.date + "T00:00:00")
+      .toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+      .toLowerCase();
+    return entry.content?.toLowerCase().includes(q) || dateStr.includes(q);
   });
-
-  // Group journals by month
-  const grouped = filtered.reduce((acc, entry) => {
-    const d = new Date(entry.date + "T00:00:00");
-    const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("en-US", { year: "numeric", month: "long" });
-    if (!acc[key]) acc[key] = { label, entries: [] };
-    acc[key].entries.push(entry);
-    return acc;
-  }, {});
-
-  const groupKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
   if (loading) {
     return (
@@ -57,53 +50,53 @@ export default function JournalsPage() {
     );
   }
 
+  const username = user?.username || user?.firstName || "User";
+  const avatarUrl = user?.imageUrl;
+
   return (
-    <div className="journals-page">
-      {/* Floating background orbs */}
-      <div className="journals-bg-orb journals-bg-orb-1" />
-      <div className="journals-bg-orb journals-bg-orb-2" />
+    <div className="journals-page-grid">
+      {/* Background image */}
+      <div className="journals-bg-image" />
+      <div className="journals-bg-overlay" />
 
-      <div className="journals-container">
-        {/* Header */}
-        <header className="journals-hero">
-          <Link href="/" className="journals-back-btn">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Dashboard
-          </Link>
-          <div className="journals-hero-text">
-            <h1 className="journals-hero-title">
-              <span className="journals-hero-icon">📖</span>
-              Your <span className="journals-accent">Journal</span> History
+      {/* Top bar */}
+      <header className="journals-topbar">
+        <Link href="/" className="journals-topbar-brand">
+           <div className="header-left">
+            <h1>
+              <span className="accent">SK&apos;</span> HABIT{" "}
+              <strong>TRACKER</strong>
             </h1>
-            <p className="journals-hero-subtitle">
-              {journals.length} {journals.length === 1 ? "entry" : "entries"} written — keep reflecting, keep growing
+            <p className="header-subtitle">
+              Track your daily habits &amp; build consistency
             </p>
-          </div>
-        </header>
+          </div>  
+        </Link>
+      </header>
 
+      {/* Content */}
+      <div className="journals-grid-container">
         {/* Search bar */}
-        <div className="journals-search-wrapper">
-          <svg className="journals-search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+        <div className="journals-grid-search">
+         
           <input
             type="text"
-            className="journals-search-input"
-            placeholder="Search your journals..."
+            className="journals-grid-search-input"
+            placeholder="Search journals..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
-            <button className="journals-search-clear" onClick={() => setSearchQuery("")}>
+            <button
+              className="journals-grid-search-clear"
+              onClick={() => setSearchQuery("")}
+            >
               ✕
             </button>
           )}
         </div>
 
-        {/* Journal entries */}
+        {/* Grid of cards */}
         {filtered.length === 0 ? (
           <div className="journals-empty">
             <div className="journals-empty-icon">📝</div>
@@ -122,73 +115,118 @@ export default function JournalsPage() {
             )}
           </div>
         ) : (
-          <div className="journals-timeline">
-            {groupKeys.map((key) => {
-              const group = grouped[key];
+          <div className="journals-grid">
+            {filtered.map((entry) => {
+              const d = new Date(entry.date + "T00:00:00");
+              const dateLabel = d
+                .toLocaleDateString("en-US", {
+                  day: "numeric",
+                  month: "short",
+                })
+                .toUpperCase();
+              const timeLabel = entry.updatedAt
+                ? new Date(entry.updatedAt).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : "";
+              const preview =
+                entry.content?.length > 120
+                  ? entry.content.substring(0, 120) + "..."
+                  : entry.content;
+
               return (
-                <div key={key} className="journals-month-group">
-                  <div className="journals-month-header">
-                    <div className="journals-month-line" />
-                    <span className="journals-month-label">{group.label}</span>
-                    <span className="journals-month-count">
-                      {group.entries.length} {group.entries.length === 1 ? "entry" : "entries"}
+                <div
+                  key={entry._id}
+                  className="journals-grid-card"
+                >
+                  {/* Card header with user info */}
+                  <div className="journals-grid-card-header">
+                    <div className="journals-grid-card-user">
+                      {avatarUrl && (
+                        <img
+                          src={avatarUrl}
+                          alt=""
+                          className="journals-grid-card-avatar"
+                        />
+                      )}
+                      <span className="journals-grid-card-username">
+                        @{username}
+                      </span>
+                    </div>
+                    <span className="journals-grid-card-date">
+                      {dateLabel}, {timeLabel}
                     </span>
                   </div>
 
-                  <div className="journals-entries">
-                    {group.entries.map((entry) => {
-                      const d = new Date(entry.date + "T00:00:00");
-                      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
-                      const dayNum = d.getDate();
-                      const isExpanded = expandedId === entry._id;
-                      const preview = entry.content?.length > 180
-                        ? entry.content.substring(0, 180) + "..."
-                        : entry.content;
-
-                      return (
-                        <div
-                          key={entry._id}
-                          className={`journals-entry-card ${isExpanded ? "expanded" : ""}`}
-                          onClick={() => setExpandedId(isExpanded ? null : entry._id)}
-                        >
-                          <div className="journals-entry-date-badge">
-                            <span className="journals-entry-day-name">{dayName}</span>
-                            <span className="journals-entry-day-num">{dayNum}</span>
-                          </div>
-                          <div className="journals-entry-body">
-                            <div className="journals-entry-header">
-                              <span className="journals-entry-full-date">
-                                {d.toLocaleDateString("en-US", {
-                                  weekday: "long", month: "long", day: "numeric", year: "numeric",
-                                })}
-                              </span>
-                              <span className="journals-entry-time">
-                                {entry.updatedAt
-                                  ? new Date(entry.updatedAt).toLocaleTimeString("en-US", {
-                                      hour: "numeric", minute: "2-digit",
-                                    })
-                                  : ""}
-                              </span>
-                            </div>
-                            <div className="journals-entry-content">
-                              {isExpanded ? entry.content : preview}
-                            </div>
-                            {entry.content?.length > 180 && (
-                              <button className="journals-entry-toggle">
-                                {isExpanded ? "Show less" : "Read more"}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                  {/* Card body */}
+                  <div className="journals-grid-card-body">
+                    <p className="journals-grid-card-content">
+                      {preview}
+                    </p>
                   </div>
+
+                  {entry.content?.length > 120 && (
+                    <button
+                      className="journals-grid-card-toggle"
+                      onClick={() => setSelectedEntry(entry)}
+                    >
+                      Read more
+                    </button>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Bottom bar / drag indicator */}
+      <div className="journals-bottom-bar">
+        <div className="journals-bottom-pill" />
+      </div>
+
+      {/* Modal overlay */}
+      {selectedEntry && (() => {
+        const d = new Date(selectedEntry.date + "T00:00:00");
+        const fullDate = d.toLocaleDateString("en-US", {
+          weekday: "long", year: "numeric", month: "long", day: "numeric",
+        });
+        const time = selectedEntry.updatedAt
+          ? new Date(selectedEntry.updatedAt).toLocaleTimeString("en-US", {
+              hour: "numeric", minute: "2-digit",
+            })
+          : "";
+        return (
+          <div className="journal-modal-overlay" onClick={() => setSelectedEntry(null)}>
+            <div className="journal-modal-card" onClick={(e) => e.stopPropagation()}>
+              {/* Close button */}
+              <button className="journal-modal-close" onClick={() => setSelectedEntry(null)}>
+                ✕
+              </button>
+
+              {/* Header */}
+              <div className="journal-modal-header">
+                <div className="journal-modal-user">
+                  {avatarUrl && (
+                    <img src={avatarUrl} alt="" className="journal-modal-avatar" />
+                  )}
+                  <span className="journal-modal-username">@{username}</span>
+                </div>
+                <div className="journal-modal-meta">
+                  <span className="journal-modal-date">{fullDate}</span>
+                  {time && <span className="journal-modal-time">{time}</span>}
+                </div>
+              </div>
+
+              {/* Full content */}
+              <div className="journal-modal-content custom-scrollbar2">
+                {selectedEntry.content}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
