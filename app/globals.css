@@ -64,6 +64,7 @@ body {
 .header-left h1 {
   font-size: 22px;
   font-weight: 900;
+  color: #ffffff;
 }
 .header-left h1 .accent {
   color: var(--accent);
@@ -109,7 +110,7 @@ body {
 .month-selectors select {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  color: var(--text-primary);
+  color: #ffffff;
   padding: 5px 10px;
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -126,6 +127,7 @@ body {
   letter-spacing: 2px;
   text-transform: uppercase;
   margin-bottom: 16px;
+  color: #ffffff;
 }
 
 /* ─── STEPS BAR ─── */
@@ -1263,8 +1265,12 @@ body {
   animation: journalModalFadeIn 0.25s ease;
 }
 @keyframes journalModalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .journal-modal-card {
   position: relative;
@@ -1282,8 +1288,14 @@ body {
   animation: journalModalSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 @keyframes journalModalSlideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 .journal-modal-close {
   position: absolute;
@@ -1357,9 +1369,17 @@ body {
 }
 
 @media (max-width: 768px) {
-  .journal-modal-overlay { padding: 16px; }
-  .journal-modal-card { padding: 20px 18px; max-height: 85vh; }
-  .journal-modal-content { font-size: 14px; max-height: 65vh; }
+  .journal-modal-overlay {
+    padding: 16px;
+  }
+  .journal-modal-card {
+    padding: 20px 18px;
+    max-height: 85vh;
+  }
+  .journal-modal-content {
+    font-size: 14px;
+    max-height: 65vh;
+  }
 }
 
 /* Bottom bar */
