@@ -550,6 +550,11 @@ body {
   flex-direction: column;
   gap: 12px;
 }
+.right-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 .sidebar-card {
   background: var(--bg-card);
   backdrop-filter: blur(12px);
