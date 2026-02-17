@@ -190,13 +190,13 @@ export default function HabitGrid({
                         habitCreated.getDate(),
                       )
                     : null;
-                  const isPast =
-                    cellDate <
-                    new Date(
-                      today.getFullYear(),
-                      today.getMonth(),
-                      today.getDate(),
-                    );
+                  const todayMidnight = new Date(
+                    today.getFullYear(),
+                    today.getMonth(),
+                    today.getDate(),
+                  );
+                  const isPast = cellDate < todayMidnight;
+                  const isFuture = cellDate > todayMidnight;
                   const isAfterCreation = habitCreatedDay
                     ? cellDate >= habitCreatedDay
                     : false;
@@ -208,11 +208,13 @@ export default function HabitGrid({
                   return (
                     <td
                       key={h.day}
-                      className={`cell-day ${done ? "completed" : ""} ${showCrossed ? "crossed" : ""} ${autoCrossed ? "auto-crossed" : ""} ${h.isToday ? "today-cell" : ""}`}
-                      onClick={() => handleCellTap(habit.id, h.day)}
+                      className={`cell-day ${done ? "completed" : ""} ${showCrossed ? "crossed" : ""} ${autoCrossed ? "auto-crossed" : ""} ${h.isToday ? "today-cell" : ""} ${isFuture ? "future-cell" : ""}`}
+                      onClick={() => {
+                        if (!isFuture) handleCellTap(habit.id, h.day);
+                      }}
                       onContextMenu={(e) => {
                         e.preventDefault();
-                        toggleDayCrossed(habit.id, h.day);
+                        if (!isFuture) toggleDayCrossed(habit.id, h.day);
                       }}
                     >
                       <div className="checkbox-box">

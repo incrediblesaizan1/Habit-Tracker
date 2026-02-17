@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, UserButton } from "@clerk/nextjs";
 import { useHabits } from "./lib/habitStore";
 import HabitGrid from "./components/HabitGrid";
 import RightSidebar from "./components/Sidebar";
@@ -73,6 +73,17 @@ export default function Home() {
           </p>
         </div>
         <div className="header-right">
+          <div className="header-profile">
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: { avatarBox: { width: 36, height: 36 } },
+              }}
+            />
+            <span className="header-profile-name">
+              {user?.fullName || user?.firstName || user?.username || "User"}
+            </span>
+          </div>
           <div className="month-selectors">
             <label>Year</label>
             <select
@@ -159,7 +170,6 @@ export default function Home() {
         </div>
 
         <RightSidebar
-          user={user}
           habits={habits}
           totalCompleted={totalCompleted}
           totalCrossed={totalCrossed}

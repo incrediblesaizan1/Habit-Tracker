@@ -20,7 +20,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <ClerkProvider appearance={{ baseTheme: dark }}>
-      <html lang="en">
+      <html lang="en" className="custom-scrollbar2">
         <body>
           <SignedIn>{children}</SignedIn>
           <SignedOut>

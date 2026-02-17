@@ -1,5 +1,4 @@
 "use client";
-import { UserButton } from "@clerk/nextjs";
 
 const MONTH_NAMES = [
   "January",
@@ -17,7 +16,6 @@ const MONTH_NAMES = [
 ];
 
 export default function RightSidebar({
-  user,
   habits,
   totalCompleted,
   totalCrossed,
@@ -34,25 +32,8 @@ export default function RightSidebar({
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (completionPercent / 100) * circumference;
 
-  const firstName = user?.firstName || user?.username || "User";
-  const fullName = user?.fullName || firstName;
-
   return (
     <div className="sidebar">
-      {/* Profile Card */}
-      <div className="sidebar-card">
-        <div className="profile-card">
-          <UserButton
-            afterSignOutUrl="/"
-            appearance={{ elements: { avatarBox: { width: 40, height: 40 } } }}
-          />
-          <div className="profile-info">
-            <span className="profile-name">{fullName}</span>
-            <span className="profile-link">Profile Settings</span>
-          </div>
-        </div>
-      </div>
-
       {/* Habits Stats */}
       <div className="sidebar-card orange-top">
         <div className="stats-section">

@@ -110,7 +110,7 @@ export default function DailyJournal() {
       </div>
       <div className="journal-date-label">{dateLabel}</div>
       <textarea
-        className="journal-textarea"
+        className="journal-textarea custom-scrollbar2"
         placeholder="How was your day? Write about your experiences, reflections, wins, and learnings..."
         value={content}
         onChange={handleChange}
