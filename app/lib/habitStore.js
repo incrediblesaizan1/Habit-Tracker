@@ -35,6 +35,7 @@ export function useHabits() {
   }, []);
 
   // Fetch completions for current month from API
+  // API returns: { habitId: { days: [...], crossedDays: [...] } }
   const fetchCompletions = useCallback(async (mk) => {
     try {
       const res = await fetch(`/api/completions?monthKey=${mk}`);
@@ -63,20 +64,37 @@ export function useHabits() {
     fetchCompletions(monthKey);
   }, [monthKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Helper to get habit data for current month
+  const getHabitData = useCallback(
+    (habitId) => {
+      return completions[monthKey]?.[habitId] || { days: [], crossedDays: [] };
+    },
+    [completions, monthKey]
+  );
+
   const toggleDay = useCallback(
     async (habitId, day) => {
       // Optimistic update
       setCompletions((prev) => {
         const updated = { ...prev };
         const monthData = { ...(updated[monthKey] || {}) };
-        const days = [...(monthData[habitId] || [])];
+        const habitData = { ...(monthData[habitId] || { days: [], crossedDays: [] }) };
+        const days = [...habitData.days];
+        const crossedDays = [...habitData.crossedDays];
+
         const idx = days.indexOf(day);
         if (idx > -1) {
           days.splice(idx, 1);
         } else {
           days.push(day);
+          // Remove from crossedDays if present
+          const crossIdx = crossedDays.indexOf(day);
+          if (crossIdx > -1) crossedDays.splice(crossIdx, 1);
         }
-        monthData[habitId] = days;
+
+        habitData.days = days;
+        habitData.crossedDays = crossedDays;
+        monthData[habitId] = habitData;
         updated[monthKey] = monthData;
         return updated;
       });
@@ -86,18 +104,72 @@ export function useHabits() {
         const res = await fetch("/api/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ habitId, monthKey, day }),
+          body: JSON.stringify({ habitId, monthKey, day, status: "completed" }),
         });
         if (res.ok) {
-          const { days } = await res.json();
+          const { days, crossedDays } = await res.json();
           setCompletions((prev) => ({
             ...prev,
-            [monthKey]: { ...(prev[monthKey] || {}), [habitId]: days },
+            [monthKey]: {
+              ...(prev[monthKey] || {}),
+              [habitId]: { days, crossedDays },
+            },
           }));
         }
       } catch (err) {
         console.error("Failed to toggle day:", err);
-        // Revert on error
+        fetchCompletions(monthKey);
+      }
+    },
+    [monthKey, fetchCompletions]
+  );
+
+  const toggleDayCrossed = useCallback(
+    async (habitId, day) => {
+      // Optimistic update
+      setCompletions((prev) => {
+        const updated = { ...prev };
+        const monthData = { ...(updated[monthKey] || {}) };
+        const habitData = { ...(monthData[habitId] || { days: [], crossedDays: [] }) };
+        const days = [...habitData.days];
+        const crossedDays = [...habitData.crossedDays];
+
+        const idx = crossedDays.indexOf(day);
+        if (idx > -1) {
+          crossedDays.splice(idx, 1);
+        } else {
+          crossedDays.push(day);
+          // Remove from days if present
+          const daysIdx = days.indexOf(day);
+          if (daysIdx > -1) days.splice(daysIdx, 1);
+        }
+
+        habitData.days = days;
+        habitData.crossedDays = crossedDays;
+        monthData[habitId] = habitData;
+        updated[monthKey] = monthData;
+        return updated;
+      });
+
+      // Sync with API
+      try {
+        const res = await fetch("/api/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ habitId, monthKey, day, status: "crossed" }),
+        });
+        if (res.ok) {
+          const { days, crossedDays } = await res.json();
+          setCompletions((prev) => ({
+            ...prev,
+            [monthKey]: {
+              ...(prev[monthKey] || {}),
+              [habitId]: { days, crossedDays },
+            },
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to toggle crossed day:", err);
         fetchCompletions(monthKey);
       }
     },
@@ -106,16 +178,30 @@ export function useHabits() {
 
   const isDayCompleted = useCallback(
     (habitId, day) => {
-      return completions[monthKey]?.[habitId]?.includes(day) ?? false;
+      return getHabitData(habitId).days?.includes(day) ?? false;
     },
-    [completions, monthKey]
+    [getHabitData]
+  );
+
+  const isDayCrossed = useCallback(
+    (habitId, day) => {
+      return getHabitData(habitId).crossedDays?.includes(day) ?? false;
+    },
+    [getHabitData]
   );
 
   const getHabitMonthlyCount = useCallback(
     (habitId) => {
-      return completions[monthKey]?.[habitId]?.length ?? 0;
+      return getHabitData(habitId).days?.length ?? 0;
     },
-    [completions, monthKey]
+    [getHabitData]
+  );
+
+  const getHabitMonthlyCrossedCount = useCallback(
+    (habitId) => {
+      return getHabitData(habitId).crossedDays?.length ?? 0;
+    },
+    [getHabitData]
   );
 
   const getDayCompletionCount = useCallback(
@@ -124,7 +210,7 @@ export function useHabits() {
       if (!monthData) return 0;
       let count = 0;
       for (const habitId in monthData) {
-        if (monthData[habitId]?.includes(day)) count++;
+        if (monthData[habitId]?.days?.includes(day)) count++;
       }
       return count;
     },
@@ -134,6 +220,10 @@ export function useHabits() {
   const totalPossible = habits.length * daysInMonth;
   const totalCompleted = habits.reduce(
     (sum, h) => sum + getHabitMonthlyCount(h.id),
+    0
+  );
+  const totalCrossed = habits.reduce(
+    (sum, h) => sum + getHabitMonthlyCrossedCount(h.id),
     0
   );
   const completionPercent =
@@ -195,10 +285,13 @@ export function useHabits() {
     setYear,
     setMonth,
     toggleDay,
+    toggleDayCrossed,
     isDayCompleted,
+    isDayCrossed,
     getHabitMonthlyCount,
     getDayCompletionCount,
     totalCompleted,
+    totalCrossed,
     totalPossible,
     completionPercent,
     bestDay,

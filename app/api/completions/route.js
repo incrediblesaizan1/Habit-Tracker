@@ -18,10 +18,13 @@ export async function GET(request) {
   await dbConnect();
   const completions = await Completion.find({ userId, monthKey }).lean();
 
-  // Build map: { habitId: [days] }
+  // Build map: { habitId: { days: [...], crossedDays: [...] } }
   const map = {};
   for (const c of completions) {
-    map[c.habitId.toString()] = c.days;
+    map[c.habitId.toString()] = {
+      days: c.days || [],
+      crossedDays: c.crossedDays || [],
+    };
   }
 
   return NextResponse.json(map);
@@ -33,27 +36,59 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { habitId, monthKey, day } = await request.json();
-  if (!habitId || !monthKey || day == null) {
-    return NextResponse.json({ error: "habitId, monthKey, day required" }, { status: 400 });
+  const { habitId, monthKey, day, status } = await request.json();
+  if (!habitId || !monthKey || day == null || !status) {
+    return NextResponse.json(
+      { error: "habitId, monthKey, day, status required" },
+      { status: 400 }
+    );
   }
 
   await dbConnect();
 
-  // Find or create the completion doc
   let completion = await Completion.findOne({ userId, habitId, monthKey });
 
   if (!completion) {
-    completion = await Completion.create({ userId, habitId, monthKey, days: [day] });
+    completion = await Completion.create({
+      userId,
+      habitId,
+      monthKey,
+      days: status === "completed" ? [day] : [],
+      crossedDays: status === "crossed" ? [day] : [],
+    });
   } else {
-    const idx = completion.days.indexOf(day);
-    if (idx > -1) {
-      completion.days.splice(idx, 1);
-    } else {
-      completion.days.push(day);
+    if (status === "completed") {
+      // Toggle in days array
+      const idx = completion.days.indexOf(day);
+      if (idx > -1) {
+        completion.days.splice(idx, 1);
+      } else {
+        completion.days.push(day);
+        // Remove from crossedDays if present
+        const crossIdx = completion.crossedDays.indexOf(day);
+        if (crossIdx > -1) {
+          completion.crossedDays.splice(crossIdx, 1);
+        }
+      }
+    } else if (status === "crossed") {
+      // Toggle in crossedDays array
+      const idx = completion.crossedDays.indexOf(day);
+      if (idx > -1) {
+        completion.crossedDays.splice(idx, 1);
+      } else {
+        completion.crossedDays.push(day);
+        // Remove from days if present
+        const daysIdx = completion.days.indexOf(day);
+        if (daysIdx > -1) {
+          completion.days.splice(daysIdx, 1);
+        }
+      }
     }
     await completion.save();
   }
 
-  return NextResponse.json({ days: completion.days });
+  return NextResponse.json({
+    days: completion.days,
+    crossedDays: completion.crossedDays,
+  });
 }

@@ -20,6 +20,7 @@ export default function RightSidebar({
   user,
   habits,
   totalCompleted,
+  totalCrossed,
   totalPossible,
   completionPercent,
   month,
@@ -57,6 +58,9 @@ export default function RightSidebar({
         <div className="stats-section">
           <div className="stats-label">Total Habits Completed</div>
           <div className="stats-value green">{totalCompleted}</div>
+          <div className="stats-divider" />
+          <div className="stats-missed-label">Total Missed</div>
+          <div className="stats-missed-value">{totalCrossed}</div>
           <div className="stats-divider" />
           <div className="stats-sub-label">Total Uncompleted</div>
           <div className="stats-sub-value">{uncompleted}</div>

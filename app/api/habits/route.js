@@ -16,6 +16,7 @@ export async function GET() {
   const mapped = habits.map((h) => ({
     id: h._id.toString(),
     name: h.name,
+    createdAt: h.createdAt,
   }));
 
   return NextResponse.json(mapped);
@@ -35,5 +36,5 @@ export async function POST(request) {
   await dbConnect();
   const habit = await Habit.create({ userId, name: name.trim() });
 
-  return NextResponse.json({ id: habit._id.toString(), name: habit.name }, { status: 201 });
+  return NextResponse.json({ id: habit._id.toString(), name: habit.name, createdAt: habit.createdAt }, { status: 201 });
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useCallback } from "react";
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -9,7 +9,9 @@ export default function HabitGrid({
   month,
   daysInMonth,
   toggleDay,
+  toggleDayCrossed,
   isDayCompleted,
+  isDayCrossed,
   getHabitMonthlyCount,
   removeHabit,
 }) {
@@ -18,6 +20,28 @@ export default function HabitGrid({
   const isCurrentMonth =
     today.getFullYear() === year && today.getMonth() === month;
   const todayDate = isCurrentMonth ? today.getDate() : -1;
+
+  // Handle cell tap: cycles between empty → completed → crossed → completed → crossed
+  const handleCellTap = useCallback(
+    (habitId, day) => {
+      const done = isDayCompleted(habitId, day);
+      const crossed = isDayCrossed(habitId, day);
+
+      if (!done && !crossed) {
+        // Empty → Completed
+        toggleDay(habitId, day);
+      } else if (done) {
+        // Completed → Crossed
+        toggleDay(habitId, day); // remove completed
+        toggleDayCrossed(habitId, day); // add crossed
+      } else if (crossed) {
+        // Crossed → Completed
+        toggleDayCrossed(habitId, day); // remove crossed
+        toggleDay(habitId, day); // add completed
+      }
+    },
+    [toggleDay, toggleDayCrossed, isDayCompleted, isDayCrossed],
+  );
 
   // Auto-scroll to today
   useEffect(() => {
@@ -68,6 +92,15 @@ export default function HabitGrid({
 
   return (
     <div className="grid-scroll" ref={scrollRef}>
+      {/* Instruction Tip */}
+      <div className="grid-instruction-tip">
+        <span className="tip-icon">💡</span>
+        <span className="tip-text">
+          <strong>Tap once</strong> = mark as done ✓ &nbsp;|&nbsp;{" "}
+          <strong>Tap again</strong> = mark as missed ✕
+        </span>
+      </div>
+
       <table className="habit-table">
         <thead>
           {/* Week group row */}
@@ -125,14 +158,48 @@ export default function HabitGrid({
                 </td>
                 {dayHeaders.map((h) => {
                   const done = isDayCompleted(habit.id, h.day);
+                  const crossed = isDayCrossed(habit.id, h.day);
+
+                  // Auto-cross: past unfilled days since habit was created
+                  const cellDate = new Date(year, month, h.day);
+                  const habitCreated = habit.createdAt
+                    ? new Date(habit.createdAt)
+                    : null;
+                  const habitCreatedDay = habitCreated
+                    ? new Date(
+                        habitCreated.getFullYear(),
+                        habitCreated.getMonth(),
+                        habitCreated.getDate(),
+                      )
+                    : null;
+                  const isPast =
+                    cellDate <
+                    new Date(
+                      today.getFullYear(),
+                      today.getMonth(),
+                      today.getDate(),
+                    );
+                  const isAfterCreation = habitCreatedDay
+                    ? cellDate >= habitCreatedDay
+                    : false;
+                  const autoCrossed =
+                    !done && !crossed && isPast && isAfterCreation;
+
+                  const showCrossed = crossed || autoCrossed;
+
                   return (
                     <td
                       key={h.day}
-                      className={`cell-day ${done ? "completed" : ""} ${h.isToday ? "today-cell" : ""}`}
-                      onClick={() => toggleDay(habit.id, h.day)}
+                      className={`cell-day ${done ? "completed" : ""} ${showCrossed ? "crossed" : ""} ${autoCrossed ? "auto-crossed" : ""} ${h.isToday ? "today-cell" : ""}`}
+                      onClick={() => handleCellTap(habit.id, h.day)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        toggleDayCrossed(habit.id, h.day);
+                      }}
                     >
                       <div className="checkbox-box">
                         {done && <span className="check-mark">✓</span>}
+                        {showCrossed && <span className="cross-mark">✕</span>}
                       </div>
                     </td>
                   );

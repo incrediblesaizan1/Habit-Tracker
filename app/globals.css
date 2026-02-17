@@ -125,6 +125,23 @@ body {
 .habit-table { width: 100%; border-collapse: collapse; min-width: 800px; }
 .habit-table th, .habit-table td { text-align: center; padding: 0; }
 
+/* Instruction Tip */
+.grid-instruction-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(20, 184, 166, 0.06);
+  border: 1px solid rgba(20, 184, 166, 0.15);
+  border-radius: var(--radius-sm);
+  margin: 10px 12px 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.tip-icon { font-size: 14px; flex-shrink: 0; }
+.tip-text { line-height: 1.4; }
+.tip-text strong { color: var(--text-primary); }
+
 /* Week group headers */
 .week-header-row th {
   padding: 4px 0;
@@ -203,6 +220,10 @@ body {
 .cell-day.today-cell { background: rgba(20,184,166,0.08); }
 .cell-day.today-cell .checkbox-box { border-color: var(--accent); box-shadow: 0 0 4px var(--accent-glow); }
 .check-mark { color: #fff; font-size: 12px; font-weight: 700; line-height: 1; user-select: none; }
+.cell-day.crossed .checkbox-box { background: var(--red); border-color: var(--red); }
+.cell-day.crossed.today-cell .checkbox-box { box-shadow: 0 0 4px rgba(239, 68, 68, 0.4); }
+.cross-mark { color: #fff; font-size: 12px; font-weight: 700; line-height: 1; user-select: none; }
+.cell-day.auto-crossed .checkbox-box { opacity: 0.45; }
 
 /* Done & Total columns */
 .cell-done { padding: 6px 4px !important; }
@@ -244,6 +265,8 @@ body {
 .stats-divider { height: 1px; background: var(--border); margin: 10px 0; }
 .stats-sub-label { font-size: 10px; color: var(--orange); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px; }
 .stats-sub-value { font-size: 28px; font-weight: 900; color: var(--orange); line-height: 1; }
+.stats-missed-label { font-size: 10px; color: var(--red); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px; }
+.stats-missed-value { font-size: 28px; font-weight: 900; color: var(--red); line-height: 1; }
 
 /* Progress ring card */
 .progress-card { text-align: center; }

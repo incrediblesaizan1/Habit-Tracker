@@ -33,10 +33,13 @@ export default function Home() {
     setYear,
     setMonth,
     toggleDay,
+    toggleDayCrossed,
     isDayCompleted,
+    isDayCrossed,
     getHabitMonthlyCount,
     getDayCompletionCount,
     totalCompleted,
+    totalCrossed,
     totalPossible,
     completionPercent,
     dailyVolume,
@@ -139,7 +142,9 @@ export default function Home() {
             month={month}
             daysInMonth={daysInMonth}
             toggleDay={toggleDay}
+            toggleDayCrossed={toggleDayCrossed}
             isDayCompleted={isDayCompleted}
+            isDayCrossed={isDayCrossed}
             getHabitMonthlyCount={getHabitMonthlyCount}
             removeHabit={removeHabit}
           />
@@ -157,6 +162,7 @@ export default function Home() {
           user={user}
           habits={habits}
           totalCompleted={totalCompleted}
+          totalCrossed={totalCrossed}
           totalPossible={totalPossible}
           completionPercent={completionPercent}
           month={month}

@@ -5,6 +5,7 @@ const CompletionSchema = new mongoose.Schema({
   habitId: { type: mongoose.Schema.Types.ObjectId, ref: "Habit", required: true },
   monthKey: { type: String, required: true }, // "YYYY-MM"
   days: { type: [Number], default: [] },
+  crossedDays: { type: [Number], default: [] },
 });
 
 CompletionSchema.index({ userId: 1, habitId: 1, monthKey: 1 }, { unique: true });
