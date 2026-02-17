@@ -10,6 +10,7 @@ export default function DailyJournal() {
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const saveTimeout = useRef(null);
 
   // Fetch journal entry for selected date
@@ -29,21 +30,26 @@ export default function DailyJournal() {
     fetchEntry();
   }, [selectedDate]);
 
-  // Auto-save with debounce
+  // Auto-save with debounce — optimistic: show "Saved" instantly
   const saveEntry = useCallback(
     async (text) => {
-      setSaving(true);
+      // Optimistic: mark as saved immediately so user sees instant feedback
+      setSaving(false);
+      setSaved(true);
+
+      // Sync with API in background
       try {
         await fetch("/api/journal", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ date: selectedDate, content: text }),
         });
-        setSaved(true);
       } catch (err) {
         console.error("Failed to save journal:", err);
-      } finally {
+        // Show failure state so user knows to retry
+        setSaved(false);
         setSaving(false);
+        setSaveFailed(true);
       }
     },
     [selectedDate],
@@ -53,6 +59,7 @@ export default function DailyJournal() {
     const text = e.target.value;
     setContent(text);
     setSaved(false);
+    setSaveFailed(false);
 
     // Debounced auto-save
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
@@ -71,7 +78,13 @@ export default function DailyJournal() {
           <span className="journal-icon">📝</span>
           <h3 className="journal-title">Daily Journal</h3>
           <span className="journal-status">
-            {saving ? "Saving..." : saved ? "✓ Saved" : ""}
+            {saving
+              ? "Saving..."
+              : saved
+                ? "✓ Saved"
+                : saveFailed
+                  ? "⚠ Save failed"
+                  : ""}
           </span>
           <Link
             href="/journals"

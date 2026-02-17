@@ -16,26 +16,43 @@ export default function HabitGrid({
   removeHabit,
 }) {
   const scrollRef = useRef(null);
+  const lastTapRef = useRef({ habitId: null, day: null, time: 0 });
   const today = new Date();
   const isCurrentMonth =
     today.getFullYear() === year && today.getMonth() === month;
   const todayDate = isCurrentMonth ? today.getDate() : -1;
 
-  // Handle cell tap: cycles between empty → completed → crossed → completed → crossed
+  // Handle cell tap:
+  // Single tap: empty → completed (✓), completed → crossed (✕)
+  // Double-tap: any state → empty (blank)
   const handleCellTap = useCallback(
     (habitId, day) => {
+      const now = Date.now();
+      const last = lastTapRef.current;
+      const isDoubleTap =
+        last.habitId === habitId && last.day === day && now - last.time < 300;
+
+      // Update last tap info
+      lastTapRef.current = { habitId, day, time: now };
+
       const done = isDayCompleted(habitId, day);
       const crossed = isDayCrossed(habitId, day);
 
-      if (!done && !crossed) {
-        // Empty → Completed
+      if (isDoubleTap) {
+        // Double-tap → Clear to blank
+        if (done) toggleDay(habitId, day); // remove completed
+        if (crossed) toggleDayCrossed(habitId, day); // remove crossed
+        // Reset so a third tap doesn't re-trigger double-tap
+        lastTapRef.current = { habitId: null, day: null, time: 0 };
+      } else if (!done && !crossed) {
+        // Empty → Completed ✓
         toggleDay(habitId, day);
       } else if (done) {
-        // Completed → Crossed
+        // Completed → Crossed ✕
         toggleDay(habitId, day); // remove completed
         toggleDayCrossed(habitId, day); // add crossed
       } else if (crossed) {
-        // Crossed → Completed
+        // Crossed → Completed ✓ (single tap on crossed cycles forward)
         toggleDayCrossed(habitId, day); // remove crossed
         toggleDay(habitId, day); // add completed
       }
@@ -97,7 +114,8 @@ export default function HabitGrid({
         <span className="tip-icon">💡</span>
         <span className="tip-text">
           <strong>Tap once</strong> = mark as done ✓ &nbsp;|&nbsp;{" "}
-          <strong>Tap again</strong> = mark as missed ✕
+          <strong>Tap again</strong> = mark as missed ✕ &nbsp;|&nbsp;{" "}
+          <strong>Double-tap</strong> = clear ○
         </span>
       </div>
 

@@ -74,7 +74,7 @@ export function useHabits() {
 
   const toggleDay = useCallback(
     async (habitId, day) => {
-      // Optimistic update
+      // Optimistic update — UI changes instantly
       setCompletions((prev) => {
         const updated = { ...prev };
         const monthData = { ...(updated[monthKey] || {}) };
@@ -99,25 +99,16 @@ export function useHabits() {
         return updated;
       });
 
-      // Sync with API
+      // Sync with API in background — don't overwrite optimistic state on success
       try {
-        const res = await fetch("/api/completions", {
+        await fetch("/api/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ habitId, monthKey, day, status: "completed" }),
         });
-        if (res.ok) {
-          const { days, crossedDays } = await res.json();
-          setCompletions((prev) => ({
-            ...prev,
-            [monthKey]: {
-              ...(prev[monthKey] || {}),
-              [habitId]: { days, crossedDays },
-            },
-          }));
-        }
       } catch (err) {
         console.error("Failed to toggle day:", err);
+        // Revert to server state on failure
         fetchCompletions(monthKey);
       }
     },
@@ -126,7 +117,7 @@ export function useHabits() {
 
   const toggleDayCrossed = useCallback(
     async (habitId, day) => {
-      // Optimistic update
+      // Optimistic update — UI changes instantly
       setCompletions((prev) => {
         const updated = { ...prev };
         const monthData = { ...(updated[monthKey] || {}) };
@@ -151,25 +142,16 @@ export function useHabits() {
         return updated;
       });
 
-      // Sync with API
+      // Sync with API in background — don't overwrite optimistic state on success
       try {
-        const res = await fetch("/api/completions", {
+        await fetch("/api/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ habitId, monthKey, day, status: "crossed" }),
         });
-        if (res.ok) {
-          const { days, crossedDays } = await res.json();
-          setCompletions((prev) => ({
-            ...prev,
-            [monthKey]: {
-              ...(prev[monthKey] || {}),
-              [habitId]: { days, crossedDays },
-            },
-          }));
-        }
       } catch (err) {
         console.error("Failed to toggle crossed day:", err);
+        // Revert to server state on failure
         fetchCompletions(monthKey);
       }
     },
@@ -249,6 +231,12 @@ export function useHabits() {
   }
 
   const addHabit = useCallback(async (name) => {
+    // Optimistic update — show habit instantly with a temporary ID
+    const tempId = `temp-${Date.now()}`;
+    const optimisticHabit = { id: tempId, name, createdAt: new Date().toISOString() };
+    setHabits((prev) => [...prev, optimisticHabit]);
+
+    // Sync with API in background
     try {
       const res = await fetch("/api/habits", {
         method: "POST",
@@ -257,10 +245,18 @@ export function useHabits() {
       });
       if (res.ok) {
         const newHabit = await res.json();
-        setHabits((prev) => [...prev, newHabit]);
+        // Replace temp habit with real one (real ID from database)
+        setHabits((prev) =>
+          prev.map((h) => (h.id === tempId ? newHabit : h))
+        );
+      } else {
+        // Remove optimistic habit on failure
+        setHabits((prev) => prev.filter((h) => h.id !== tempId));
       }
     } catch (err) {
       console.error("Failed to add habit:", err);
+      // Revert optimistic add on network error
+      setHabits((prev) => prev.filter((h) => h.id !== tempId));
     }
   }, []);
 
