@@ -69,7 +69,7 @@ export function useHabits() {
     (habitId) => {
       return completions[monthKey]?.[habitId] || { days: [], crossedDays: [] };
     },
-    [completions, monthKey]
+    [completions, monthKey],
   );
 
   const toggleDay = useCallback(
@@ -78,7 +78,9 @@ export function useHabits() {
       setCompletions((prev) => {
         const updated = { ...prev };
         const monthData = { ...(updated[monthKey] || {}) };
-        const habitData = { ...(monthData[habitId] || { days: [], crossedDays: [] }) };
+        const habitData = {
+          ...(monthData[habitId] || { days: [], crossedDays: [] }),
+        };
         const days = [...habitData.days];
         const crossedDays = [...habitData.crossedDays];
 
@@ -112,7 +114,7 @@ export function useHabits() {
         fetchCompletions(monthKey);
       }
     },
-    [monthKey, fetchCompletions]
+    [monthKey, fetchCompletions],
   );
 
   const toggleDayCrossed = useCallback(
@@ -121,7 +123,9 @@ export function useHabits() {
       setCompletions((prev) => {
         const updated = { ...prev };
         const monthData = { ...(updated[monthKey] || {}) };
-        const habitData = { ...(monthData[habitId] || { days: [], crossedDays: [] }) };
+        const habitData = {
+          ...(monthData[habitId] || { days: [], crossedDays: [] }),
+        };
         const days = [...habitData.days];
         const crossedDays = [...habitData.crossedDays];
 
@@ -155,35 +159,72 @@ export function useHabits() {
         fetchCompletions(monthKey);
       }
     },
-    [monthKey, fetchCompletions]
+    [monthKey, fetchCompletions],
   );
 
   const isDayCompleted = useCallback(
     (habitId, day) => {
       return getHabitData(habitId).days?.includes(day) ?? false;
     },
-    [getHabitData]
+    [getHabitData],
   );
 
   const isDayCrossed = useCallback(
     (habitId, day) => {
       return getHabitData(habitId).crossedDays?.includes(day) ?? false;
     },
-    [getHabitData]
+    [getHabitData],
   );
 
   const getHabitMonthlyCount = useCallback(
     (habitId) => {
       return getHabitData(habitId).days?.length ?? 0;
     },
-    [getHabitData]
+    [getHabitData],
   );
 
   const getHabitMonthlyCrossedCount = useCallback(
-    (habitId) => {
-      return getHabitData(habitId).crossedDays?.length ?? 0;
+    (habit) => {
+      const explicitCrossed = getHabitData(habit.id).crossedDays?.length ?? 0;
+      const completedDays = getHabitData(habit.id).days || [];
+      const crossedDays = getHabitData(habit.id).crossedDays || [];
+
+      let autoCrossedCount = 0;
+      const habitCreated = habit.createdAt ? new Date(habit.createdAt) : null;
+      const habitCreatedDay = habitCreated
+        ? new Date(
+            habitCreated.getFullYear(),
+            habitCreated.getMonth(),
+            habitCreated.getDate(),
+          )
+        : null;
+      const today = new Date();
+      const todayMidnight = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+      );
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cellDate = new Date(year, month, d);
+        const isPast = cellDate < todayMidnight;
+        const isAfterCreation = habitCreatedDay
+          ? cellDate >= habitCreatedDay
+          : false;
+
+        if (
+          isPast &&
+          isAfterCreation &&
+          !completedDays.includes(d) &&
+          !crossedDays.includes(d)
+        ) {
+          autoCrossedCount++;
+        }
+      }
+
+      return explicitCrossed + autoCrossedCount;
     },
-    [getHabitData]
+    [getHabitData, year, month, daysInMonth],
   );
 
   const getDayCompletionCount = useCallback(
@@ -196,20 +237,21 @@ export function useHabits() {
       }
       return count;
     },
-    [completions, monthKey]
+    [completions, monthKey],
   );
 
   const today = new Date();
-  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  const isCurrentMonth =
+    today.getFullYear() === year && today.getMonth() === month;
   const effectiveDays = isCurrentMonth ? today.getDate() : daysInMonth;
   const totalPossible = habits.length * effectiveDays;
   const totalCompleted = habits.reduce(
     (sum, h) => sum + getHabitMonthlyCount(h.id),
-    0
+    0,
   );
   const totalCrossed = habits.reduce(
-    (sum, h) => sum + getHabitMonthlyCrossedCount(h.id),
-    0
+    (sum, h) => sum + getHabitMonthlyCrossedCount(h),
+    0,
   );
   const completionPercent =
     totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
@@ -224,7 +266,15 @@ export function useHabits() {
     const maxCount = Math.max(...dayCounts);
     if (maxCount === 0) return "–";
     const bestIdx = dayCounts.indexOf(maxCount);
-    return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][bestIdx];
+    return [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ][bestIdx];
   })();
 
   // Daily volume data
@@ -236,7 +286,11 @@ export function useHabits() {
   const addHabit = useCallback(async (name) => {
     // Optimistic update — show habit instantly with a temporary ID
     const tempId = `temp-${Date.now()}`;
-    const optimisticHabit = { id: tempId, name, createdAt: new Date().toISOString() };
+    const optimisticHabit = {
+      id: tempId,
+      name,
+      createdAt: new Date().toISOString(),
+    };
     setHabits((prev) => [...prev, optimisticHabit]);
 
     // Sync with API in background
@@ -249,9 +303,7 @@ export function useHabits() {
       if (res.ok) {
         const newHabit = await res.json();
         // Replace temp habit with real one (real ID from database)
-        setHabits((prev) =>
-          prev.map((h) => (h.id === tempId ? newHabit : h))
-        );
+        setHabits((prev) => prev.map((h) => (h.id === tempId ? newHabit : h)));
       } else {
         // Remove optimistic habit on failure
         setHabits((prev) => prev.filter((h) => h.id !== tempId));
@@ -263,17 +315,20 @@ export function useHabits() {
     }
   }, []);
 
-  const removeHabit = useCallback(async (habitId) => {
-    // Optimistic removal
-    setHabits((prev) => prev.filter((h) => h.id !== habitId));
+  const removeHabit = useCallback(
+    async (habitId) => {
+      // Optimistic removal
+      setHabits((prev) => prev.filter((h) => h.id !== habitId));
 
-    try {
-      await fetch(`/api/habits/${habitId}`, { method: "DELETE" });
-    } catch (err) {
-      console.error("Failed to remove habit:", err);
-      fetchHabits(); // Revert on error
-    }
-  }, [fetchHabits]);
+      try {
+        await fetch(`/api/habits/${habitId}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("Failed to remove habit:", err);
+        fetchHabits(); // Revert on error
+      }
+    },
+    [fetchHabits],
+  );
 
   return {
     habits,

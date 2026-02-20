@@ -485,9 +485,7 @@ body {
   line-height: 1;
   user-select: none;
 }
-.cell-day.auto-crossed .checkbox-box {
-  opacity: 0.45;
-}
+
 .cell-day.future-cell {
   cursor: not-allowed;
   pointer-events: none;

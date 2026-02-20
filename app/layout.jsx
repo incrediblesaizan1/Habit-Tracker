@@ -16,7 +16,7 @@ export const metadata = {
   title: "Habit Tracker",
   description: "Track your daily habits and build consistency",
   icons: {
-    icon: "/icon.png",
+    icon: "/logo.svg",
   },
 };
 

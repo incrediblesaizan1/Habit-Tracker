@@ -229,7 +229,7 @@ export default function HabitGrid({
                   )}-${String(dayObj.day).padStart(2, "0")}`;
                   // Re-evaluating status and isFuture based on original logic
                   const done = isDayCompleted(habit.id, dayObj.day);
-                  const crossed = isDayCrossed(habit.id, dayObj.day);
+                  const crossed = isDayCrossed(habit.id, dayObj.day) && !done;
 
                   const cellDate = new Date(year, month, dayObj.day);
                   const habitCreated = habit.createdAt
