@@ -21,9 +21,15 @@ export async function GET(request) {
   // Build map: { habitId: { days: [...], crossedDays: [...] } }
   const map = {};
   for (const c of completions) {
+    // Deduplicate array values in case legacy race conditions corrupted the database
+    const days = [...new Set(c.days || [])];
+    const crossedDays = [...new Set(c.crossedDays || [])].filter(
+      (d) => !days.includes(d) // Guarantee a day isn't marked both crossed and completed
+    );
+
     map[c.habitId.toString()] = {
-      days: c.days || [],
-      crossedDays: c.crossedDays || [],
+      days,
+      crossedDays,
     };
   }
 
@@ -57,33 +63,16 @@ export async function POST(request) {
       crossedDays: status === "crossed" ? [day] : [],
     });
   } else {
+    // Remove from both arrays first to prevent duplicates
+    completion.days = completion.days.filter((d) => d !== day);
+    completion.crossedDays = completion.crossedDays.filter((d) => d !== day);
+
     if (status === "completed") {
-      // Toggle in days array
-      const idx = completion.days.indexOf(day);
-      if (idx > -1) {
-        completion.days.splice(idx, 1);
-      } else {
-        completion.days.push(day);
-        // Remove from crossedDays if present
-        const crossIdx = completion.crossedDays.indexOf(day);
-        if (crossIdx > -1) {
-          completion.crossedDays.splice(crossIdx, 1);
-        }
-      }
+      completion.days.push(day);
     } else if (status === "crossed") {
-      // Toggle in crossedDays array
-      const idx = completion.crossedDays.indexOf(day);
-      if (idx > -1) {
-        completion.crossedDays.splice(idx, 1);
-      } else {
-        completion.crossedDays.push(day);
-        // Remove from days if present
-        const daysIdx = completion.days.indexOf(day);
-        if (daysIdx > -1) {
-          completion.days.splice(daysIdx, 1);
-        }
-      }
-    }
+      completion.crossedDays.push(day);
+    } // if "empty", we just save the removal
+
     await completion.save();
   }
 

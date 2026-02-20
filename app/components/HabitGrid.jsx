@@ -9,8 +9,7 @@ export default function HabitGrid({
   year,
   month,
   daysInMonth,
-  toggleDay,
-  toggleDayCrossed,
+  setDayStatus,
   isDayCompleted,
   isDayCrossed,
   getHabitMonthlyCount,
@@ -51,24 +50,21 @@ export default function HabitGrid({
 
       if (isDoubleTap) {
         // Double-tap → Clear to blank
-        if (done) toggleDay(habitId, day); // remove completed
-        if (crossed) toggleDayCrossed(habitId, day); // remove crossed
+        setDayStatus(habitId, day, "empty");
         // Reset so a third tap doesn't re-trigger double-tap
         lastTapRef.current = { habitId: null, day: null, time: 0 };
       } else if (!done && !crossed) {
         // Empty → Completed ✓
-        toggleDay(habitId, day);
+        setDayStatus(habitId, day, "completed");
       } else if (done) {
         // Completed → Crossed ✕
-        toggleDay(habitId, day); // remove completed
-        toggleDayCrossed(habitId, day); // add crossed
+        setDayStatus(habitId, day, "crossed");
       } else if (crossed) {
         // Crossed → Completed ✓ (single tap on crossed cycles forward)
-        toggleDayCrossed(habitId, day); // remove crossed
-        toggleDay(habitId, day); // add completed
+        setDayStatus(habitId, day, "completed");
       }
     },
-    [toggleDay, toggleDayCrossed, isDayCompleted, isDayCrossed],
+    [setDayStatus, isDayCompleted, isDayCrossed],
   );
 
   // Auto-scroll to today/yesterday (mobile friendly)
@@ -274,7 +270,11 @@ export default function HabitGrid({
                       }}
                       onContextMenu={(e) => {
                         e.preventDefault();
-                        if (!isFuture) toggleDayCrossed(habit.id, dayObj.day);
+                        if (!isFuture) {
+                          if (crossed)
+                            setDayStatus(habit.id, dayObj.day, "empty");
+                          else setDayStatus(habit.id, dayObj.day, "crossed");
+                        }
                       }}
                     >
                       <div className="checkbox-box">

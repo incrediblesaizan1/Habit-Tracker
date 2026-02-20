@@ -72,8 +72,8 @@ export function useHabits() {
     [completions, monthKey],
   );
 
-  const toggleDay = useCallback(
-    async (habitId, day) => {
+  const setDayStatus = useCallback(
+    async (habitId, day, status) => {
       // Optimistic update — UI changes instantly
       setCompletions((prev) => {
         const updated = { ...prev };
@@ -84,59 +84,18 @@ export function useHabits() {
         const days = [...habitData.days];
         const crossedDays = [...habitData.crossedDays];
 
-        const idx = days.indexOf(day);
-        if (idx > -1) {
-          days.splice(idx, 1);
-        } else {
+        // Remove from both first
+        const daysIdx = days.indexOf(day);
+        if (daysIdx > -1) days.splice(daysIdx, 1);
+
+        const crossedIdx = crossedDays.indexOf(day);
+        if (crossedIdx > -1) crossedDays.splice(crossedIdx, 1);
+
+        // Add to the correct array
+        if (status === "completed") {
           days.push(day);
-          // Remove from crossedDays if present
-          const crossIdx = crossedDays.indexOf(day);
-          if (crossIdx > -1) crossedDays.splice(crossIdx, 1);
-        }
-
-        habitData.days = days;
-        habitData.crossedDays = crossedDays;
-        monthData[habitId] = habitData;
-        updated[monthKey] = monthData;
-        return updated;
-      });
-
-      // Sync with API in background — don't overwrite optimistic state on success
-      try {
-        await fetch("/api/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ habitId, monthKey, day, status: "completed" }),
-        });
-      } catch (err) {
-        console.error("Failed to toggle day:", err);
-        // Revert to server state on failure
-        fetchCompletions(monthKey);
-      }
-    },
-    [monthKey, fetchCompletions],
-  );
-
-  const toggleDayCrossed = useCallback(
-    async (habitId, day) => {
-      // Optimistic update — UI changes instantly
-      setCompletions((prev) => {
-        const updated = { ...prev };
-        const monthData = { ...(updated[monthKey] || {}) };
-        const habitData = {
-          ...(monthData[habitId] || { days: [], crossedDays: [] }),
-        };
-        const days = [...habitData.days];
-        const crossedDays = [...habitData.crossedDays];
-
-        const idx = crossedDays.indexOf(day);
-        if (idx > -1) {
-          crossedDays.splice(idx, 1);
-        } else {
+        } else if (status === "crossed") {
           crossedDays.push(day);
-          // Remove from days if present
-          const daysIdx = days.indexOf(day);
-          if (daysIdx > -1) days.splice(daysIdx, 1);
         }
 
         habitData.days = days;
@@ -146,15 +105,15 @@ export function useHabits() {
         return updated;
       });
 
-      // Sync with API in background — don't overwrite optimistic state on success
+      // Sync with API in background
       try {
         await fetch("/api/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ habitId, monthKey, day, status: "crossed" }),
+          body: JSON.stringify({ habitId, monthKey, day, status }),
         });
       } catch (err) {
-        console.error("Failed to toggle crossed day:", err);
+        console.error(`Failed to set day status to ${status}:`, err);
         // Revert to server state on failure
         fetchCompletions(monthKey);
       }
@@ -338,8 +297,7 @@ export function useHabits() {
     daysInMonth,
     setYear,
     setMonth,
-    toggleDay,
-    toggleDayCrossed,
+    setDayStatus,
     isDayCompleted,
     isDayCrossed,
     getHabitMonthlyCount,

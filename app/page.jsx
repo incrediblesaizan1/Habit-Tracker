@@ -33,8 +33,7 @@ export default function Home() {
     daysInMonth,
     setYear,
     setMonth,
-    toggleDay,
-    toggleDayCrossed,
+    setDayStatus,
     isDayCompleted,
     isDayCrossed,
     getHabitMonthlyCount,
@@ -139,8 +138,7 @@ export default function Home() {
                 year={year}
                 month={month}
                 daysInMonth={daysInMonth}
-                toggleDay={toggleDay}
-                toggleDayCrossed={toggleDayCrossed}
+                setDayStatus={setDayStatus}
                 isDayCompleted={isDayCompleted}
                 isDayCrossed={isDayCrossed}
                 getHabitMonthlyCount={getHabitMonthlyCount}
