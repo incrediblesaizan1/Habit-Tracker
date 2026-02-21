@@ -42,6 +42,7 @@ export default function Home() {
     totalCrossed,
     totalPossible,
     completionPercent,
+    bestDateObj,
     dailyVolume,
     addHabit,
     removeHabit,
@@ -163,6 +164,7 @@ export default function Home() {
             completionPercent={completionPercent}
             month={month}
             year={year}
+            bestDateObj={bestDateObj}
           />
         </div>
 

@@ -201,9 +201,12 @@ export default function HabitGrid({
 
             return (
               <motion.tr
-                key={habit.id} // Changed from habit._id to habit.id to match original prop
+                key={habit.id}
                 className="habit-row"
                 variants={rowVariants}
+                initial="hidden"
+                animate="visible"
+                layout
               >
                 <td className="cell-sn">{hIndex + 1}</td>
                 <td className="cell-habit">

@@ -25,10 +25,16 @@ export default function Sidebar({
   completionPercent,
   month,
   year,
+  bestDateObj,
 }) {
   const uncompleted = totalPossible - totalCompleted;
   const today = new Date();
   const todayStr = `${MONTH_NAMES[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
+
+  const bestDateStr = bestDateObj?.day
+    ? `${MONTH_NAMES[month]} ${bestDateObj.day}, ${year}`
+    : "No habits yet";
+  const bestDateCount = Math.max(bestDateObj?.count || 0, 0);
 
   const radius = 46;
   const circumference = 2 * Math.PI * radius;
@@ -84,6 +90,68 @@ export default function Sidebar({
           <div className="today-badge">
             <span>Today&apos;s Date</span>
             <span className="today-badge-date">{todayStr}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Best Day Card */}
+      <div
+        className="sidebar-card"
+        style={{ borderTop: "2px solid var(--accent)" }}
+      >
+        <div className="stats-section">
+          <div className="stats-label">Best Day</div>
+          <div
+            className="stats-value"
+            style={{
+              fontSize: "22px",
+              color: "var(--text-primary)",
+              marginTop: "4px",
+            }}
+          >
+            {bestDateStr}
+          </div>
+          <div className="stats-divider" />
+          <div
+            className="stats-missed-label"
+            style={{ color: "var(--accent)" }}
+          >
+            Habits Completed
+          </div>
+          <div
+            className="stats-missed-value"
+            style={{
+              color: "var(--accent)",
+              fontSize: "24px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginTop: "4px",
+            }}
+          >
+            <span>{bestDateCount}</span>
+            <div
+              style={{
+                flex: 1,
+                height: "6px",
+                background: "rgba(20, 184, 166, 0.2)",
+                borderRadius: "3px",
+                overflow: "hidden",
+              }}
+            >
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{
+                  width: `${habits?.length > 0 ? (bestDateCount / habits.length) * 100 : 0}%`,
+                }}
+                transition={{ duration: 1, delay: 0.5 }}
+                style={{
+                  height: "100%",
+                  background: "var(--accent)",
+                  borderRadius: "3px",
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>

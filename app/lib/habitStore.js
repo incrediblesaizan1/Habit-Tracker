@@ -236,6 +236,20 @@ export function useHabits() {
     ][bestIdx];
   })();
 
+  // Best date in the month
+  const bestDateObj = (() => {
+    let maxCount = -1;
+    let bestD = null;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const count = getDayCompletionCount(d);
+      if (count >= maxCount && count > 0) {
+        maxCount = count;
+        bestD = d;
+      }
+    }
+    return { day: bestD, count: maxCount };
+  })();
+
   // Daily volume data
   const dailyVolume = [];
   for (let d = 1; d <= daysInMonth; d++) {
@@ -307,6 +321,7 @@ export function useHabits() {
     totalPossible,
     completionPercent,
     bestDay,
+    bestDateObj,
     dailyVolume,
     addHabit,
     removeHabit,
