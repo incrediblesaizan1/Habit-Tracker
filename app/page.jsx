@@ -3,13 +3,11 @@ import { useState } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useHabits } from "./lib/habitStore";
 import HabitGrid from "./components/HabitGrid";
-import RightSidebar from "./components/Sidebar";
 import BottomCharts from "./components/StatsBar";
 import AddHabitModal from "./components/AddHabitModal";
 import DailyJournal from "./components/DailyJournal";
 import GoalsAndSacrifices from "./components/GoalsAndSacrifices";
-import YearProgress from "./components/YearProgress";
-import BestDay from "./components/BestDay";
+import DailyFocus from "./components/DailyFocus";
 
 const MONTH_NAMES = [
   "January",
@@ -76,9 +74,7 @@ export default function Home() {
               <span className="accent">SK&apos;</span> HABIT{" "}
               <strong>TRACKER</strong>
             </h1>
-            <p className="header-subtitle">
-              Track your daily habits &amp; build consistency
-            </p>
+            <p className="header-subtitle">Build the life you want</p>
           </div>
           <div className="header-right">
             <div className="header-profile">
@@ -124,69 +120,50 @@ export default function Home() {
           {MONTH_NAMES[month]} {year}
         </div>
 
-        {/* Main Content: Grid + Sidebar */}
+        {/* Daily Focus */}
+        <DailyFocus
+          habits={habits}
+          year={year}
+          month={month}
+          todayDate={new Date().getDate()}
+          isCurrentMonth={
+            new Date().getFullYear() === year && new Date().getMonth() === month
+          }
+          totalCompleted={totalCompleted}
+          totalMissed={totalCrossed}
+          getHabitMonthlyCount={getHabitMonthlyCount}
+          isDayCompleted={isDayCompleted}
+          isDayCrossed={isDayCrossed}
+        />
+
+        {/* Goal Focus */}
+        <div style={{ marginBottom: "24px" }}>
+          <GoalsAndSacrifices />
+        </div>
+
+        {/* Main Content: Full Width Habit Grid */}
         <div className="content-row">
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "16px",
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{ display: "flex", gap: "16px", alignItems: "stretch" }}
-            >
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "16px",
-                }}
+          <div className="habit-board">
+            <HabitGrid
+              habits={habits}
+              year={year}
+              month={month}
+              daysInMonth={daysInMonth}
+              setDayStatus={setDayStatus}
+              isDayCompleted={isDayCompleted}
+              isDayCrossed={isDayCrossed}
+              getHabitMonthlyCount={getHabitMonthlyCount}
+              removeHabit={removeHabit}
+            />
+            <div className="add-habit-row">
+              <button
+                className="btn-add-habit"
+                onClick={() => setShowModal(true)}
               >
-                <YearProgress />
-                <BestDay
-                  habits={habits}
-                  month={month}
-                  year={year}
-                  bestDateObj={bestDateObj}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 0, marginBottom: "16px" }}>
-                <GoalsAndSacrifices />
-              </div>
-            </div>
-            <div className="habit-board">
-              <HabitGrid
-                habits={habits}
-                year={year}
-                month={month}
-                daysInMonth={daysInMonth}
-                setDayStatus={setDayStatus}
-                isDayCompleted={isDayCompleted}
-                isDayCrossed={isDayCrossed}
-                getHabitMonthlyCount={getHabitMonthlyCount}
-                removeHabit={removeHabit}
-              />
-              <div className="add-habit-row">
-                <button
-                  className="btn-add-habit"
-                  onClick={() => setShowModal(true)}
-                >
-                  + Add New Habit
-                </button>
-              </div>
+                + Add New Habit
+              </button>
             </div>
           </div>
-
-          <RightSidebar
-            totalCompleted={totalCompleted}
-            totalCrossed={totalCrossed}
-            totalPossible={totalPossible}
-            completionPercent={completionPercent}
-          />
         </div>
 
         {/* Bottom Charts */}

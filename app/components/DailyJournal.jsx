@@ -73,11 +73,34 @@ export default function DailyJournal() {
 
   return (
     <div className="journal-section" style={{ marginTop: "16px" }}>
-      <div className="journal-header">
-        <div className="journal-title-row">
+      <div
+        className="journal-header"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "16px",
+        }}
+      >
+        <div
+          className="journal-title-row"
+          style={{ display: "flex", alignItems: "center", gap: "8px" }}
+        >
           <span className="journal-icon">📝</span>
           <h3 className="journal-title">Daily Journal</h3>
-          <span className="journal-status">
+          <Link
+            href="/journals"
+            className="journal-history-link"
+            style={{
+              marginLeft: "12px",
+              fontSize: "12px",
+              color: "var(--text-muted)",
+              textDecoration: "none",
+            }}
+          >
+            View History →
+          </Link>
+          <span className="journal-status" style={{ marginLeft: "12px" }}>
             {saving
               ? "Saving..."
               : saved
@@ -86,29 +109,37 @@ export default function DailyJournal() {
                   ? "⚠ Save failed"
                   : ""}
           </span>
-          <Link
-            href="/journals"
-            className="journal-history-link"
-            style={{
-              marginLeft: "auto",
-              fontSize: "11px",
-              color: "var(--text-muted)",
-              textDecoration: "none",
-            }}
-          >
-            View History →
-          </Link>
         </div>
-        <div className="journal-date-picker">
+        <div
+          className="journal-date-picker"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "rgba(255, 255, 255, 0.05)",
+            padding: "6px 12px",
+            borderRadius: "var(--radius-sm)",
+          }}
+        >
+          <span style={{ fontSize: "13px", fontWeight: "bold" }}>
+            {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+              year: "numeric",
+            })}
+          </span>
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             className="journal-date-input"
+            style={{ padding: 0, border: "none", background: "transparent" }}
           />
         </div>
       </div>
-      <div className="journal-date-label">{dateLabel}</div>
+      <div className="journal-date-label" style={{ marginBottom: "12px" }}>
+        {dateLabel}
+      </div>
       <textarea
         className="journal-textarea custom-scrollbar2"
         placeholder="How was your day? Write about your experiences, reflections, wins, and learnings..."
