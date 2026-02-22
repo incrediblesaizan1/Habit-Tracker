@@ -121,23 +121,26 @@ export default function Home() {
         </div>
 
         {/* Daily Focus */}
-        <DailyFocus
-          habits={habits}
-          year={year}
-          month={month}
-          todayDate={new Date().getDate()}
-          isCurrentMonth={
-            new Date().getFullYear() === year && new Date().getMonth() === month
-          }
-          totalCompleted={totalCompleted}
-          totalMissed={totalCrossed}
-          getHabitMonthlyCount={getHabitMonthlyCount}
-          isDayCompleted={isDayCompleted}
-          isDayCrossed={isDayCrossed}
-        />
+        <div className="content-row">
+          <DailyFocus
+            habits={habits}
+            year={year}
+            month={month}
+            todayDate={new Date().getDate()}
+            isCurrentMonth={
+              new Date().getFullYear() === year &&
+              new Date().getMonth() === month
+            }
+            totalCompleted={totalCompleted}
+            totalMissed={totalCrossed}
+            getHabitMonthlyCount={getHabitMonthlyCount}
+            isDayCompleted={isDayCompleted}
+            isDayCrossed={isDayCrossed}
+          />
+        </div>
 
         {/* Goal Focus */}
-        <div style={{ marginBottom: "24px" }}>
+        <div className="content-row" style={{ marginBottom: "24px" }}>
           <GoalsAndSacrifices />
         </div>
 
