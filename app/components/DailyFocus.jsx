@@ -38,7 +38,7 @@ export default function DailyFocus({
     : new Date(year, month + 1, 0).getDate();
   const totalTarget = habits.length * effectiveDays;
   const monthCompleted = totalCompleted; // passed from useHabits
-  const monthMissed = totalCrossed; // we need to ensure useHabits passes this
+  const monthMissed = totalMissed; // we need to ensure useHabits passes this
 
   return (
     <div className="daily-focus-container">
