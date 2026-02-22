@@ -7,7 +7,9 @@ import RightSidebar from "./components/Sidebar";
 import BottomCharts from "./components/StatsBar";
 import AddHabitModal from "./components/AddHabitModal";
 import DailyJournal from "./components/DailyJournal";
+import GoalsAndSacrifices from "./components/GoalsAndSacrifices";
 import YearProgress from "./components/YearProgress";
+import BestDay from "./components/BestDay";
 
 const MONTH_NAMES = [
   "January",
@@ -132,7 +134,30 @@ export default function Home() {
               minWidth: 0,
             }}
           >
-            <YearProgress />
+            <div
+              style={{ display: "flex", gap: "16px", alignItems: "stretch" }}
+            >
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "16px",
+                }}
+              >
+                <YearProgress />
+                <BestDay
+                  habits={habits}
+                  month={month}
+                  year={year}
+                  bestDateObj={bestDateObj}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 0, marginBottom: "16px" }}>
+                <GoalsAndSacrifices />
+              </div>
+            </div>
             <div className="habit-board">
               <HabitGrid
                 habits={habits}
@@ -157,14 +182,10 @@ export default function Home() {
           </div>
 
           <RightSidebar
-            habits={habits}
             totalCompleted={totalCompleted}
             totalCrossed={totalCrossed}
             totalPossible={totalPossible}
             completionPercent={completionPercent}
-            month={month}
-            year={year}
-            bestDateObj={bestDateObj}
           />
         </div>
 
