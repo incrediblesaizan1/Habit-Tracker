@@ -70,9 +70,35 @@ body {
 
 /* ─── PAGE LAYOUT ─── */
 .app-wrapper {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 20px 24px;
+}
+
+/* ─── THREE-COLUMN LAYOUT ─── */
+.main-three-col {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: start;
+}
+.main-col-left,
+.main-col-right {
+  position: sticky;
+  top: 20px;
+}
+.main-col-center {
+  min-width: 0;
+}
+@media (max-width: 1200px) {
+  .main-three-col {
+    grid-template-columns: 1fr;
+  }
+  .main-col-left,
+  .main-col-right {
+    position: static;
+  }
 }
 
 /* ─── HEADER ─── */

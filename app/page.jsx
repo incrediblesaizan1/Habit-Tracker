@@ -105,52 +105,61 @@ export default function Home() {
           {MONTH_NAMES[month].toUpperCase()} {year}
         </div>
 
-        {/* ─── DAILY FOCUS ─── */}
-        <DailyFocus
-          habits={habits}
-          year={year}
-          month={month}
-          totalCompleted={totalCompleted}
-          totalCrossed={totalCrossed}
-          totalPossible={totalPossible}
-          completionPercent={completionPercent}
-          bestDateObj={bestDateObj}
-        />
-
-        {/* ─── GOAL & HABIT SETUP ─── */}
-        <GoalsAndSacrifices
-          habits={habits}
-          totalCompleted={totalCompleted}
-          totalPossible={totalPossible}
-          completionPercent={completionPercent}
-          bestDateObj={bestDateObj}
-          year={year}
-          month={month}
-        />
-
-        {/* ─── HABIT TRACKER ─── */}
-        <div className="habit-board">
-          <div className="habit-board-header">
-            <h2 className="habit-board-title">Habit Tracker</h2>
+        {/* ─── MAIN 3-COLUMN: Focus | Tracker | Goals ─── */}
+        <div className="main-three-col">
+          {/* Left: Daily Focus (vertical) */}
+          <div className="main-col-left">
+            <DailyFocus
+              habits={habits}
+              year={year}
+              month={month}
+              totalCompleted={totalCompleted}
+              totalCrossed={totalCrossed}
+              totalPossible={totalPossible}
+              completionPercent={completionPercent}
+              bestDateObj={bestDateObj}
+            />
           </div>
-          <HabitGrid
-            habits={habits}
-            year={year}
-            month={month}
-            daysInMonth={daysInMonth}
-            setDayStatus={setDayStatus}
-            isDayCompleted={isDayCompleted}
-            isDayCrossed={isDayCrossed}
-            getHabitMonthlyCount={getHabitMonthlyCount}
-            removeHabit={removeHabit}
-          />
-          <div className="add-habit-row">
-            <button
-              className="btn-add-habit"
-              onClick={() => setShowModal(true)}
-            >
-              + Add New Habit
-            </button>
+
+          {/* Center: Habit Tracker */}
+          <div className="main-col-center">
+            <div className="habit-board">
+              <div className="habit-board-header">
+                <h2 className="habit-board-title">Habit Tracker</h2>
+              </div>
+              <HabitGrid
+                habits={habits}
+                year={year}
+                month={month}
+                daysInMonth={daysInMonth}
+                setDayStatus={setDayStatus}
+                isDayCompleted={isDayCompleted}
+                isDayCrossed={isDayCrossed}
+                getHabitMonthlyCount={getHabitMonthlyCount}
+                removeHabit={removeHabit}
+              />
+              <div className="add-habit-row">
+                <button
+                  className="btn-add-habit"
+                  onClick={() => setShowModal(true)}
+                >
+                  + Add New Habit
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Goal & Habit Setup (vertical) */}
+          <div className="main-col-right">
+            <GoalsAndSacrifices
+              habits={habits}
+              totalCompleted={totalCompleted}
+              totalPossible={totalPossible}
+              completionPercent={completionPercent}
+              bestDateObj={bestDateObj}
+              year={year}
+              month={month}
+            />
           </div>
         </div>
 

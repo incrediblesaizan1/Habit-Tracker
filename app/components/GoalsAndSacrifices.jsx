@@ -35,9 +35,7 @@ export default function GoalsAndSacrifices({
           setTargetDate(data.targetDate || "");
           setReward(data.reward || "");
           setSacrifices(
-            data.sacrifices && data.sacrifices.length > 0
-              ? data.sacrifices
-              : [""],
+            data.sacrifices && data.sacrifices.length > 0 ? data.sacrifices : [""],
           );
           setSaved(false);
         }
@@ -84,23 +82,6 @@ export default function GoalsAndSacrifices({
 
   const [newSacrifice, setNewSacrifice] = useState("");
 
-  function handleGoalChange(e) {
-    const text = e.target.value;
-    setGoal(text);
-    triggerSave(text, targetDate, sacrifices);
-  }
-
-  function handleTargetDateChange(e) {
-    const text = e.target.value;
-    setTargetDate(text);
-    triggerSave(goal, text, sacrifices);
-  }
-
-  function handleRewardChange(e) {
-    const text = e.target.value;
-    setReward(text);
-  }
-
   function handleAddSacrifice(e) {
     e.preventDefault();
     if (!newSacrifice.trim()) return;
@@ -123,7 +104,7 @@ export default function GoalsAndSacrifices({
   }
 
   // Streak ring
-  const streakRadius = 58;
+  const streakRadius = 52;
   const streakCirc = 2 * Math.PI * streakRadius;
   const streakOffset = streakCirc - (completionPercent / 100) * streakCirc;
 
@@ -132,160 +113,115 @@ export default function GoalsAndSacrifices({
     : "";
 
   return (
-    <div className="goal-setup-section">
-      <div className="goal-setup-header">
-        <div className="goal-setup-title">
-          <span>🎯</span>
-          <span>Habit Tracker</span>
-          <span className="goal-setup-status">
-            {saving
-              ? "Saving..."
-              : saved
-                ? "✓ Saved"
-                : saveFailed
-                  ? "⚠ Save failed"
-                  : ""}
-          </span>
-        </div>
+    <div className="goal-setup-section" style={{ marginBottom: 0 }}>
+      <div className="goal-setup-title" style={{ marginBottom: "16px" }}>
+        <span>🎯</span>
+        <span>Habit Tracker</span>
+        <span className="goal-setup-status">
+          {saving ? "Saving..." : saved ? "✓ Saved" : saveFailed ? "⚠ Failed" : ""}
+        </span>
       </div>
 
-      <div className="goal-setup-grid">
-        <div className="goal-setup-fields">
-          {/* Goal & Target */}
-          <div className="goal-setup-row">
-            <div className="goal-field" style={{ flex: 2 }}>
-              <label className="goal-field-label">What are you trying to achieve?</label>
-              <input
-                type="text"
-                className="goal-field-input"
-                placeholder="What are you trying to achieve?"
-                value={goal}
-                onChange={handleGoalChange}
-              />
-            </div>
-            <div className="goal-field" style={{ flex: 1 }}>
-              <label className="goal-field-label">Target Days Done</label>
-              <input
-                type="text"
-                className="goal-field-input"
-                placeholder="E.g. 90 Days"
-                value={targetDate}
-                onChange={handleTargetDateChange}
-              />
-            </div>
-          </div>
-
-          {/* Sacrifice & Reward */}
-          <div className="goal-setup-row">
-            <div className="goal-field">
-              <label className="goal-field-label">My Sacrifice</label>
-              <form
-                onSubmit={handleAddSacrifice}
-                style={{ display: "flex", gap: "8px" }}
-              >
-                <input
-                  type="text"
-                  className="goal-field-input"
-                  placeholder="What will you sacrifice?"
-                  value={newSacrifice}
-                  onChange={(e) => setNewSacrifice(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    background: "var(--accent)",
-                    color: "#fff",
-                    border: "none",
-                    padding: "0 16px",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Add
-                </button>
-              </form>
-            </div>
-            <div className="goal-field">
-              <label className="goal-field-label">My Reward</label>
-              <input
-                type="text"
-                className="goal-field-input"
-                placeholder="What's your reward?"
-                value={reward}
-                onChange={handleRewardChange}
-              />
-            </div>
-          </div>
-
-          {/* Sacrifice Tags */}
-          <div className="sacrifice-tags">
-            {sacrifices
-              .filter((s) => s.trim() !== "")
-              .map((sac, index) => (
-                <div key={index} className="sacrifice-tag">
-                  <span>{sac}</span>
-                  <button
-                    onClick={() => removeSacrifice(index)}
-                    className="sacrifice-tag-remove"
-                    title="Remove"
-                  >
-                    &times;
-                  </button>
-                </div>
-              ))}
-          </div>
-
-          {/* Interaction hints */}
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", fontSize: "11px", color: "var(--text-muted)" }}>
-            <span>🖱️ Tap mark as complete</span>
-            <span>🖱️ Tap again to mark as missed</span>
-            <span>
-              <button
-                style={{
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid var(--border)",
-                  color: "#fff",
-                  padding: "3px 10px",
-                  borderRadius: "4px",
-                  fontSize: "10px",
-                  cursor: "pointer",
-                  marginRight: "4px",
-                }}
-              >
-                Clear
-              </button>
-              Double tap to clear habits
-            </span>
+      {/* Streak Ring */}
+      <div className="streak-ring-container" style={{ marginBottom: "16px" }}>
+        <div className="streak-ring-wrap" style={{ width: "120px", height: "120px" }}>
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle className="streak-pr-bg" cx="60" cy="60" r={streakRadius} />
+            <motion.circle
+              className="streak-pr-fill"
+              cx="60"
+              cy="60"
+              r={streakRadius}
+              strokeDasharray={streakCirc}
+              initial={{ strokeDashoffset: streakCirc }}
+              animate={{ strokeDashoffset: streakOffset }}
+              transition={{ duration: 1.2, ease: "easeOut", delay: 0.5 }}
+            />
+          </svg>
+          <div className="streak-pr-text">
+            <span className="streak-pr-num" style={{ fontSize: "26px" }}>{totalCompleted}</span>
+            <span className="streak-pr-pct">{completionPercent}%</span>
           </div>
         </div>
+        <div className="streak-label">Best Streak</div>
+        {bestDateStr && <div className="streak-date">{bestDateStr}</div>}
+      </div>
 
-        {/* Streak Ring */}
-        <div className="streak-ring-container">
-          <div className="streak-ring-wrap">
-            <svg width="140" height="140" viewBox="0 0 140 140">
-              <circle className="streak-pr-bg" cx="70" cy="70" r={streakRadius} />
-              <motion.circle
-                className="streak-pr-fill"
-                cx="70"
-                cy="70"
-                r={streakRadius}
-                strokeDasharray={streakCirc}
-                initial={{ strokeDashoffset: streakCirc }}
-                animate={{ strokeDashoffset: streakOffset }}
-                transition={{ duration: 1.2, ease: "easeOut", delay: 0.5 }}
-              />
-            </svg>
-            <div className="streak-pr-text">
-              <span className="streak-pr-num">{totalCompleted}</span>
-              <span className="streak-pr-pct">{completionPercent}%</span>
-            </div>
+      {/* Goal Input */}
+      <div style={{ marginBottom: "12px" }}>
+        <label className="goal-field-label">My Goal</label>
+        <input
+          type="text"
+          className="goal-field-input"
+          placeholder="What are you trying to achieve?"
+          value={goal}
+          onChange={(e) => { setGoal(e.target.value); triggerSave(e.target.value, targetDate, sacrifices); }}
+        />
+      </div>
+
+      {/* Target Days */}
+      <div style={{ marginBottom: "12px" }}>
+        <label className="goal-field-label">Target Days</label>
+        <input
+          type="text"
+          className="goal-field-input"
+          placeholder="E.g. 90 Days"
+          value={targetDate}
+          onChange={(e) => { setTargetDate(e.target.value); triggerSave(goal, e.target.value, sacrifices); }}
+        />
+      </div>
+
+      {/* Sacrifice */}
+      <div style={{ marginBottom: "12px" }}>
+        <label className="goal-field-label">My Sacrifice</label>
+        <form onSubmit={handleAddSacrifice} style={{ display: "flex", gap: "6px" }}>
+          <input
+            type="text"
+            className="goal-field-input"
+            placeholder="What will you sacrifice?"
+            value={newSacrifice}
+            onChange={(e) => setNewSacrifice(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button
+            type="submit"
+            style={{
+              background: "var(--accent)", color: "#fff", border: "none",
+              padding: "0 12px", borderRadius: "var(--radius-xs)",
+              fontSize: "11px", fontWeight: "600", cursor: "pointer",
+            }}
+          >
+            Add
+          </button>
+        </form>
+      </div>
+
+      {/* Sacrifice Tags */}
+      <div className="sacrifice-tags" style={{ marginBottom: "12px" }}>
+        {sacrifices.filter((s) => s.trim() !== "").map((sac, index) => (
+          <div key={index} className="sacrifice-tag" style={{ fontSize: "11px", padding: "4px 10px" }}>
+            <span>{sac}</span>
+            <button
+              onClick={() => removeSacrifice(index)}
+              className="sacrifice-tag-remove"
+              title="Remove"
+            >
+              &times;
+            </button>
           </div>
-          <div className="streak-label">Best Streak</div>
-          {bestDateStr && <div className="streak-date">{bestDateStr}</div>}
-        </div>
+        ))}
+      </div>
+
+      {/* Reward */}
+      <div>
+        <label className="goal-field-label">My Reward</label>
+        <input
+          type="text"
+          className="goal-field-input"
+          placeholder="What's your reward?"
+          value={reward}
+          onChange={(e) => setReward(e.target.value)}
+        />
       </div>
     </div>
   );
