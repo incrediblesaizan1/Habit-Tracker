@@ -117,7 +117,7 @@ export default function Home() {
               totalCrossed={totalCrossed}
               totalPossible={totalPossible}
               completionPercent={completionPercent}
-              bestDateObj={bestDateObj}
+              getDayCompletionCount={getDayCompletionCount}
             />
           </div>
 

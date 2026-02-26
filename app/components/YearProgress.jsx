@@ -32,7 +32,6 @@ export default function YearProgress() {
     setProgress(percent);
     setDaysLeft(totalDays - dayOfYear);
 
-    // Random quote
     const randomQuote =
       MOTIVATIONAL_QUOTES[
         Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)
@@ -41,80 +40,42 @@ export default function YearProgress() {
   }, []);
 
   return (
-    <motion.div
-      className="sidebar-card accent-top"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        boxSizing: "border-box",
-      }}
-    >
-      <div
-        className="progress-card"
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          height: "100%",
-        }}
-      >
-        <div className="progress-card-title">Year Progress</div>
-
-        <div style={{ marginBottom: "12px", textAlign: "center" }}>
-          <div
-            style={{
-              height: "8px",
-              width: "100%",
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: "4px",
-              overflow: "hidden",
-              marginBottom: "8px",
-            }}
-          >
-            <motion.div
-              style={{
-                height: "100%",
-                background: "var(--accent)",
-                borderRadius: "4px",
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
-            />
-          </div>
-          <div
-            style={{
-              fontSize: "12px",
-              color: "var(--text-muted)",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>{Math.round(progress)}% gone</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: "600" }}>
-              {daysLeft} days left
-            </span>
-          </div>
-        </div>
-
-        <div className="stats-divider" />
-
-        <div
-          style={{
-            fontStyle: "italic",
-            fontSize: "12px",
-            color: "var(--text-muted)",
-            lineHeight: "1.5",
-          }}
-        >
-          &quot;{quote}&quot;
-        </div>
+    <div>
+      <div style={{
+        fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase",
+        letterSpacing: "1px", fontWeight: "700", marginBottom: "8px",
+      }}>
+        Year Progress
       </div>
-    </motion.div>
+
+      <div style={{
+        height: "6px", width: "100%", background: "rgba(255,255,255,0.08)",
+        borderRadius: "3px", overflow: "hidden", marginBottom: "6px",
+      }}>
+        <motion.div
+          style={{
+            height: "100%", background: "var(--accent)", borderRadius: "3px",
+          }}
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
+        />
+      </div>
+
+      <div style={{
+        fontSize: "11px", color: "var(--text-muted)",
+        display: "flex", justifyContent: "space-between",
+      }}>
+        <span>{Math.round(progress)}% gone</span>
+        <span style={{ color: "#fff", fontWeight: "600" }}>{daysLeft} days left</span>
+      </div>
+
+      <div style={{
+        fontStyle: "italic", fontSize: "11px", color: "var(--text-muted)",
+        lineHeight: "1.4", marginTop: "8px",
+      }}>
+        &quot;{quote}&quot;
+      </div>
+    </div>
   );
 }

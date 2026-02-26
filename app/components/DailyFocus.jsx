@@ -1,5 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
+import YearProgress from "./YearProgress";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -14,15 +15,21 @@ export default function DailyFocus({
   totalCrossed,
   totalPossible,
   completionPercent,
-  bestDateObj,
+  getDayCompletionCount,
 }) {
   const today = new Date();
   const todayStr = `${MONTH_NAMES[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
   const totalHabits = habits.length;
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
-  const todayIncomplete = isCurrentMonth ? Math.max(0, totalHabits - totalCompleted + totalCrossed) : 0;
 
-  // Progress ring — larger radius for readable text
+  // Today's actual completed count (habits done today)
+  const todayDate = today.getDate();
+  const todayDone = isCurrentMonth && getDayCompletionCount
+    ? getDayCompletionCount(todayDate)
+    : 0;
+  const todayIncomplete = isCurrentMonth ? Math.max(0, totalHabits - todayDone) : 0;
+
+  // Progress ring
   const radius = 54;
   const svgSize = 130;
   const center = svgSize / 2;
@@ -38,8 +45,13 @@ export default function DailyFocus({
         <div className="today-card-label">Today</div>
         <div className="today-card-date">{todayStr}</div>
 
+        {/* Year Progress */}
+        <div style={{ width: "100%", margin: "12px 0 4px" }}>
+          <YearProgress />
+        </div>
+
         {/* Progress Ring */}
-        <div className="focus-ring-wrap" style={{ margin: "16px auto", width: `${svgSize}px`, height: `${svgSize}px` }}>
+        <div className="focus-ring-wrap" style={{ margin: "12px auto", width: `${svgSize}px`, height: `${svgSize}px` }}>
           <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
             <circle className="focus-pr-bg" cx={center} cy={center} r={radius} />
             <motion.circle
@@ -76,7 +88,7 @@ export default function DailyFocus({
         <div className="goal-progress-card-title">Target Habits</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div>
-            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Today</div>
+            <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "2px" }}>Today&apos;s Task</div>
             <div style={{ fontSize: "22px", fontWeight: "800", color: "#fff" }}>{totalHabits}</div>
           </div>
           <div style={{ textAlign: "right" }}>
