@@ -195,12 +195,13 @@ body {
 /* ─── MONTH TITLE ─── */
 .month-title {
   text-align: center;
+  font-family: cursive;
   font-size: 42px;
   font-weight: 800;
   letter-spacing: 4px;
   text-transform: uppercase;
   margin-bottom: 20px;
-  color: #111111;
+  color: #ffffff;
   text-shadow: none;
 }
 
