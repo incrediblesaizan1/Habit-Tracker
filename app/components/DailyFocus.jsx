@@ -1,6 +1,5 @@
 "use client";
 import { motion } from "framer-motion";
-import YearProgress from "./YearProgress";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -44,11 +43,6 @@ export default function DailyFocus({
       <div className="today-card" style={{ flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: "12px" }}>
         <div className="today-card-label">Today</div>
         <div className="today-card-date">{todayStr}</div>
-
-        {/* Year Progress */}
-        <div style={{ width: "100%", margin: "12px 0 4px" }}>
-          <YearProgress />
-        </div>
 
         {/* Progress Ring */}
         <div className="focus-ring-wrap" style={{ margin: "12px auto", width: `${svgSize}px`, height: `${svgSize}px` }}>

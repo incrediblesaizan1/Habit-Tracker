@@ -8,6 +8,7 @@ import AddHabitModal from "./components/AddHabitModal";
 import DailyJournal from "./components/DailyJournal";
 import GoalsAndSacrifices from "./components/GoalsAndSacrifices";
 import DailyFocus from "./components/DailyFocus";
+import YearProgress from "./components/YearProgress";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -103,6 +104,15 @@ export default function Home() {
         {/* ─── MONTH TITLE ─── */}
         <div className="month-title">
           {MONTH_NAMES[month].toUpperCase()} {year}
+        </div>
+
+        {/* ─── YEAR PROGRESS ─── */}
+        <div style={{
+          background: "var(--bg-card)", backdropFilter: "blur(16px)",
+          border: "1px solid var(--border)", borderRadius: "var(--radius)",
+          padding: "16px 24px", marginBottom: "16px",
+        }}>
+          <YearProgress />
         </div>
 
         {/* ─── MAIN 3-COLUMN: Focus | Tracker | Goals ─── */}
