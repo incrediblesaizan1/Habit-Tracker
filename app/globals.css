@@ -35,12 +35,12 @@
 
 @media (min-width: 1024px) {
   :root {
-    --w-sn: 28px;
-    --w-habit: 110px;
-    --w-day: 24px;
-    --w-done: 48px;
-    --w-total: 42px;
-    --sz-check: 16px;
+    --w-sn: 24px;
+    --w-habit: 90px;
+    --w-day: 20px;
+    --w-done: 42px;
+    --w-total: 38px;
+    --sz-check: 14px;
   }
 }
 
@@ -617,7 +617,7 @@ body {
 .habit-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
+  table-layout: fixed;
 }
 .habit-table th,
 .habit-table td {
