@@ -27,7 +27,7 @@ export default function DynamicBackground({ images }) {
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
         zIndex: -1,
-        // Optional: Add a transition or overlay if needed
+        opacity: 0.3,
       }}
     />
   );
