@@ -18,7 +18,6 @@ export default function DailyFocus({
 }) {
   const today = new Date();
   const todayStr = `${MONTH_NAMES[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
-  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
   const totalHabits = habits.length;
 
   // Progress ring
@@ -87,7 +86,7 @@ export default function DailyFocus({
       </div>
 
       {/* Target Info */}
-      <div className="goal-progress-card" style={{ marginBottom: "12px" }}>
+      <div className="goal-progress-card">
         <div className="goal-progress-card-title">Target Habits</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div>
@@ -98,18 +97,6 @@ export default function DailyFocus({
             <div style={{ fontSize: "10px", color: "var(--red)", marginBottom: "2px" }}>Missed</div>
             <div style={{ fontSize: "22px", fontWeight: "800", color: "var(--red)" }}>{totalCrossed}</div>
           </div>
-        </div>
-      </div>
-
-      {/* Month Stats */}
-      <div className="month-stats-card">
-        <div className="month-stats-item">
-          <div className="month-stats-label">Total Done</div>
-          <div className="month-stats-value green">{totalCompleted}</div>
-        </div>
-        <div className="month-stats-item">
-          <div className="month-stats-label red">Total Missed</div>
-          <div className="month-stats-value red">{totalCrossed}</div>
         </div>
       </div>
     </div>

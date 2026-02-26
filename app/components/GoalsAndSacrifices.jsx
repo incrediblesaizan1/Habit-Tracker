@@ -7,6 +7,83 @@ const MONTH_NAMES = [
   "July","August","September","October","November","December",
 ];
 
+/* ─── Small Add Modal ─── */
+function AddModal({ title, placeholder, onAdd, onClose }) {
+  const [value, setValue] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!value.trim()) return;
+    onAdd(value.trim());
+    onClose();
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "var(--bg-card-solid)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius)", padding: "24px", width: "360px",
+          maxWidth: "90vw", boxShadow: "var(--shadow-lg)",
+          animation: "slideUp 0.25s cubic-bezier(0.4,0,0.2,1)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#fff", marginBottom: "14px" }}>
+          {title}
+        </h3>
+        <form onSubmit={handleSubmit}>
+          <input
+            ref={inputRef}
+            type="text"
+            className="goal-field-input"
+            placeholder={placeholder}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            style={{ marginBottom: "14px" }}
+          />
+          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: "rgba(255,255,255,0.06)", border: "1px solid var(--border)",
+                color: "var(--text-secondary)", padding: "7px 16px",
+                borderRadius: "var(--radius-xs)", fontSize: "12px",
+                fontWeight: "600", cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{
+                background: "var(--accent)", color: "#fff", border: "none",
+                padding: "7px 18px", borderRadius: "var(--radius-xs)",
+                fontSize: "12px", fontWeight: "600", cursor: "pointer",
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function GoalsAndSacrifices({
   habits = [],
   totalCompleted = 0,
@@ -18,12 +95,14 @@ export default function GoalsAndSacrifices({
 }) {
   const [goal, setGoal] = useState("");
   const [targetDate, setTargetDate] = useState("");
-  const [reward, setReward] = useState("");
   const [sacrifices, setSacrifices] = useState([""]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const saveTimeout = useRef(null);
+
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showSacrificeModal, setShowSacrificeModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -33,7 +112,6 @@ export default function GoalsAndSacrifices({
           const data = await res.json();
           setGoal(data.goal || "");
           setTargetDate(data.targetDate || "");
-          setReward(data.reward || "");
           setSacrifices(
             data.sacrifices && data.sacrifices.length > 0 ? data.sacrifices : [""],
           );
@@ -62,45 +140,46 @@ export default function GoalsAndSacrifices({
         });
       } catch (err) {
         console.error("Failed to save goals:", err);
-        setSaved(false);
-        setSaving(false);
-        setSaveFailed(true);
+        setSaved(false); setSaving(false); setSaveFailed(true);
       }
     },
     [],
   );
 
   function triggerSave(newGoal, newTargetDate, newSacrifices) {
-    setSaved(false);
-    setSaveFailed(false);
+    setSaved(false); setSaveFailed(false);
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(
-      () => saveData(newGoal, newTargetDate, newSacrifices),
-      800,
+      () => saveData(newGoal, newTargetDate, newSacrifices), 800,
     );
   }
 
-  const [newSacrifice, setNewSacrifice] = useState("");
+  function handleAddGoal(text) {
+    setGoal(text);
+    triggerSave(text, targetDate, sacrifices);
+  }
 
-  function handleAddSacrifice(e) {
-    e.preventDefault();
-    if (!newSacrifice.trim()) return;
-    let newSacrifices;
+  function handleAddSacrifice(text) {
+    let newSacs;
     if (sacrifices.length === 1 && sacrifices[0] === "") {
-      newSacrifices = [newSacrifice.trim()];
+      newSacs = [text];
     } else {
-      newSacrifices = [...sacrifices, newSacrifice.trim()];
+      newSacs = [...sacrifices, text];
     }
-    setSacrifices(newSacrifices);
-    setNewSacrifice("");
-    triggerSave(goal, targetDate, newSacrifices);
+    setSacrifices(newSacs);
+    triggerSave(goal, targetDate, newSacs);
   }
 
   function removeSacrifice(index) {
-    let newSacrifices = sacrifices.filter((_, i) => i !== index);
-    if (newSacrifices.length === 0) newSacrifices = [""];
-    setSacrifices(newSacrifices);
-    triggerSave(goal, targetDate, newSacrifices);
+    let newSacs = sacrifices.filter((_, i) => i !== index);
+    if (newSacs.length === 0) newSacs = [""];
+    setSacrifices(newSacs);
+    triggerSave(goal, targetDate, newSacs);
+  }
+
+  function removeGoal() {
+    setGoal("");
+    triggerSave("", targetDate, sacrifices);
   }
 
   // Streak ring
@@ -112,11 +191,18 @@ export default function GoalsAndSacrifices({
     ? `${MONTH_NAMES[month]} ${bestDateObj.day}, ${year}`
     : "";
 
+  // Target days parsing
+  const targetNum = parseInt(targetDate) || 0;
+  const effectiveDays = habits.length > 0
+    ? Math.round(totalCompleted / habits.length)
+    : 0;
+  const targetProgress = targetNum > 0 ? Math.min(100, Math.round((effectiveDays / targetNum) * 100)) : 0;
+
   return (
     <div className="goal-setup-section" style={{ marginBottom: 0 }}>
       <div className="goal-setup-title" style={{ marginBottom: "16px" }}>
         <span>🎯</span>
-        <span>Habit Tracker</span>
+        <span>Goal Setup</span>
         <span className="goal-setup-status">
           {saving ? "Saving..." : saved ? "✓ Saved" : saveFailed ? "⚠ Failed" : ""}
         </span>
@@ -129,9 +215,7 @@ export default function GoalsAndSacrifices({
             <circle className="streak-pr-bg" cx="60" cy="60" r={streakRadius} />
             <motion.circle
               className="streak-pr-fill"
-              cx="60"
-              cy="60"
-              r={streakRadius}
+              cx="60" cy="60" r={streakRadius}
               strokeDasharray={streakCirc}
               initial={{ strokeDashoffset: streakCirc }}
               animate={{ strokeDashoffset: streakOffset }}
@@ -147,82 +231,179 @@ export default function GoalsAndSacrifices({
         {bestDateStr && <div className="streak-date">{bestDateStr}</div>}
       </div>
 
-      {/* Goal Input */}
+      {/* ─── My Goal (Card) ─── */}
       <div style={{ marginBottom: "12px" }}>
-        <label className="goal-field-label">My Goal</label>
-        <input
-          type="text"
-          className="goal-field-input"
-          placeholder="What are you trying to achieve?"
-          value={goal}
-          onChange={(e) => { setGoal(e.target.value); triggerSave(e.target.value, targetDate, sacrifices); }}
-        />
-      </div>
-
-      {/* Target Days */}
-      <div style={{ marginBottom: "12px" }}>
-        <label className="goal-field-label">Target Days</label>
-        <input
-          type="text"
-          className="goal-field-input"
-          placeholder="E.g. 90 Days"
-          value={targetDate}
-          onChange={(e) => { setTargetDate(e.target.value); triggerSave(goal, e.target.value, sacrifices); }}
-        />
-      </div>
-
-      {/* Sacrifice */}
-      <div style={{ marginBottom: "12px" }}>
-        <label className="goal-field-label">My Sacrifice</label>
-        <form onSubmit={handleAddSacrifice} style={{ display: "flex", gap: "6px" }}>
-          <input
-            type="text"
-            className="goal-field-input"
-            placeholder="What will you sacrifice?"
-            value={newSacrifice}
-            onChange={(e) => setNewSacrifice(e.target.value)}
-            style={{ flex: 1 }}
-          />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+          <span className="goal-field-label" style={{ marginBottom: 0 }}>My Goal</span>
           <button
-            type="submit"
+            onClick={() => setShowGoalModal(true)}
+            title="Set Goal"
             style={{
-              background: "var(--accent)", color: "#fff", border: "none",
-              padding: "0 12px", borderRadius: "var(--radius-xs)",
-              fontSize: "11px", fontWeight: "600", cursor: "pointer",
+              width: "26px", height: "26px", borderRadius: "50%",
+              background: "var(--accent)", border: "none", color: "#fff",
+              fontSize: "16px", fontWeight: "700", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              lineHeight: 1, transition: "transform 0.2s, box-shadow 0.2s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 0 12px var(--accent-glow)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+          >
+            +
+          </button>
+        </div>
+        {goal ? (
+          <div
+            style={{
+              background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)",
+              borderRadius: "var(--radius-sm)", padding: "14px 16px",
+              display: "flex", alignItems: "flex-start", gap: "10px",
+              minHeight: "60px",
             }}
           >
-            Add
-          </button>
-        </form>
-      </div>
-
-      {/* Sacrifice Tags */}
-      <div className="sacrifice-tags" style={{ marginBottom: "12px" }}>
-        {sacrifices.filter((s) => s.trim() !== "").map((sac, index) => (
-          <div key={index} className="sacrifice-tag" style={{ fontSize: "11px", padding: "4px 10px" }}>
-            <span>{sac}</span>
+            <span style={{ fontSize: "14px", color: "#fff", flex: 1, lineHeight: "1.5" }}>{goal}</span>
             <button
-              onClick={() => removeSacrifice(index)}
-              className="sacrifice-tag-remove"
-              title="Remove"
+              onClick={removeGoal}
+              style={{
+                background: "none", border: "none", color: "var(--text-muted)",
+                cursor: "pointer", fontSize: "16px", padding: "0 2px", lineHeight: 1,
+                flexShrink: 0, transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) => (e.target.style.color = "var(--red)")}
+              onMouseLeave={(e) => (e.target.style.color = "var(--text-muted)")}
+              title="Remove goal"
             >
-              &times;
+              ×
             </button>
           </div>
-        ))}
+        ) : (
+          <div
+            onClick={() => setShowGoalModal(true)}
+            style={{
+              background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.1)",
+              borderRadius: "var(--radius-sm)", padding: "14px 16px",
+              minHeight: "60px", display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", transition: "border-color 0.2s, background 0.2s",
+              color: "var(--text-muted)", fontSize: "12px",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; e.currentTarget.style.background = "rgba(20,184,166,0.04)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+          >
+            Click + to set your goal
+          </div>
+        )}
       </div>
 
-      {/* Reward */}
-      <div>
-        <label className="goal-field-label">My Reward</label>
-        <input
-          type="text"
-          className="goal-field-input"
-          placeholder="What's your reward?"
-          value={reward}
-          onChange={(e) => setReward(e.target.value)}
-        />
+      {/* ─── Target Days ─── */}
+      <div style={{ marginBottom: "12px" }}>
+        <span className="goal-field-label">Target Days</span>
+        <div style={{
+          background: "rgba(10,15,30,0.6)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius-sm)", padding: "12px 14px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+            <input
+              type="number"
+              min="1"
+              className="goal-field-input"
+              placeholder="90"
+              value={targetDate}
+              onChange={(e) => { setTargetDate(e.target.value); triggerSave(goal, e.target.value, sacrifices); }}
+              style={{ width: "70px", textAlign: "center", padding: "6px 8px", fontSize: "16px", fontWeight: "700" }}
+            />
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>days</span>
+            <div style={{ marginLeft: "auto", textAlign: "right" }}>
+              <div style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent)" }}>{effectiveDays}</div>
+              <div style={{ fontSize: "9px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>done</div>
+            </div>
+          </div>
+          {targetNum > 0 && (
+            <div style={{ position: "relative" }}>
+              <div style={{
+                height: "6px", background: "rgba(255,255,255,0.06)",
+                borderRadius: "3px", overflow: "hidden",
+              }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${targetProgress}%` }}
+                  transition={{ duration: 0.8 }}
+                  style={{
+                    height: "100%", borderRadius: "3px",
+                    background: targetProgress >= 100 ? "var(--green)" : "var(--accent)",
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px", textAlign: "right" }}>
+                {targetProgress}%
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ─── My Sacrifices (Tags) ─── */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+          <span className="goal-field-label" style={{ marginBottom: 0 }}>My Sacrifices</span>
+          <button
+            onClick={() => setShowSacrificeModal(true)}
+            title="Add Sacrifice"
+            style={{
+              width: "26px", height: "26px", borderRadius: "50%",
+              background: "var(--accent)", border: "none", color: "#fff",
+              fontSize: "16px", fontWeight: "700", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              lineHeight: 1, transition: "transform 0.2s, box-shadow 0.2s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 0 12px var(--accent-glow)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+          >
+            +
+          </button>
+        </div>
+        <div className="sacrifice-tags">
+          {sacrifices.filter((s) => s.trim() !== "").map((sac, index) => (
+            <div key={index} className="sacrifice-tag" style={{ fontSize: "11px", padding: "5px 10px" }}>
+              <span>{sac}</span>
+              <button
+                onClick={() => removeSacrifice(index)}
+                className="sacrifice-tag-remove"
+                title="Remove"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {sacrifices.filter((s) => s.trim() !== "").length === 0 && (
+            <div
+              onClick={() => setShowSacrificeModal(true)}
+              style={{
+                fontSize: "11px", color: "var(--text-muted)", fontStyle: "italic",
+                cursor: "pointer", padding: "4px 0",
+              }}
+            >
+              Click + to add sacrifices
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      {showGoalModal && (
+        <AddModal
+          title="Set Your Goal"
+          placeholder="What are you trying to achieve?"
+          onAdd={handleAddGoal}
+          onClose={() => setShowGoalModal(false)}
+        />
+      )}
+      {showSacrificeModal && (
+        <AddModal
+          title="Add a Sacrifice"
+          placeholder="What will you sacrifice to achieve this?"
+          onAdd={handleAddSacrifice}
+          onClose={() => setShowSacrificeModal(false)}
+        />
+      )}
     </div>
   );
 }
