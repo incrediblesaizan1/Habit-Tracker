@@ -72,7 +72,7 @@ export default function DailyJournal() {
   );
 
   return (
-    <div className="journal-section" style={{ marginTop: "16px" }}>
+    <div className="journal-section" style={{ marginTop: "0" }}>
       <div className="journal-header">
         <div className="journal-title-row">
           <span className="journal-icon">📝</span>

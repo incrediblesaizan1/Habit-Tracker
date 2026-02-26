@@ -160,13 +160,12 @@ export default function HabitGrid({
         variants={tableVariants}
       >
         <thead>
-          {/* Week group row */}
           <tr className="week-header-row">
             <th className="col-sn" rowSpan={2}>
-              S/N
+              HABIT NAME
             </th>
             <th className="col-habits" rowSpan={2}>
-              Habits
+              
             </th>
             {weeks.map((w, i) => (
               <th key={i} className="week-span" colSpan={w.span}>
@@ -174,7 +173,6 @@ export default function HabitGrid({
               </th>
             ))}
           </tr>
-          {/* Day letters + numbers */}
           <tr className="day-header-row">
             {dayHeaders.map((h) => (
               <th
@@ -192,12 +190,7 @@ export default function HabitGrid({
         </thead>
         <tbody>
           {habits.map((habit, hIndex) => {
-            const stats = getHabitMonthlyCount(habit.id); // Assuming getHabitMonthlyCount is the equivalent of getHabitStats
-            const currentDate = {
-              year: today.getFullYear(),
-              month: today.getMonth(),
-              day: today.getDate(),
-            };
+            const stats = getHabitMonthlyCount(habit.id);
 
             return (
               <motion.tr
@@ -214,19 +207,14 @@ export default function HabitGrid({
                     <span className="habit-label">{habit.name}</span>
                     <button
                       className="habit-delete"
-                      onClick={() => removeHabit(habit.id)} // Changed from deleteHabit(habit._id) to removeHabit(habit.id)
-                      title="Remove" // Changed from "Delete habit" to "Remove"
+                      onClick={() => removeHabit(habit.id)}
+                      title="Remove"
                     >
                       ✕
                     </button>
                   </div>
                 </td>
                 {dayHeaders.map((dayObj) => {
-                  const dateKey = `${year}-${String(month + 1).padStart(
-                    2,
-                    "0",
-                  )}-${String(dayObj.day).padStart(2, "0")}`;
-                  // Re-evaluating status and isFuture based on original logic
                   const done = isDayCompleted(habit.id, dayObj.day);
                   const crossed = isDayCrossed(habit.id, dayObj.day) && !done;
 
@@ -256,7 +244,6 @@ export default function HabitGrid({
 
                   const showCrossed = crossed || autoCrossed;
 
-                  // Determine class
                   let cellClass = "cell-day";
                   if (dayObj.isToday) cellClass += " today-cell";
                   if (done) cellClass += " completed";
@@ -290,7 +277,7 @@ export default function HabitGrid({
 
                 <td className="cell-done">
                   <span className="done-text">
-                    {stats} / {isCurrentMonth ? todayDate : daysInMonth}
+                    {stats}/{isCurrentMonth ? todayDate : daysInMonth}
                   </span>
                 </td>
                 <td className="cell-total">
@@ -316,6 +303,22 @@ export default function HabitGrid({
           })}
         </tbody>
       </motion.table>
+
+      {/* Legend */}
+      <div className="grid-legend">
+        <div className="legend-item">
+          <div className="legend-dot completed">✓</div>
+          <span>Tap to mark as complete</span>
+        </div>
+        <div className="legend-item">
+          <div className="legend-dot missed">✕</div>
+          <span>Tap again to mark as missed</span>
+        </div>
+        <div className="legend-item">
+          <div className="legend-dot empty"></div>
+          <span>Clear status</span>
+        </div>
+      </div>
     </div>
   );
 }

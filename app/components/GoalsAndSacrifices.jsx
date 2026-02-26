@@ -1,16 +1,30 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { motion } from "framer-motion";
 
-export default function GoalsAndSacrifices() {
+const MONTH_NAMES = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
+export default function GoalsAndSacrifices({
+  habits = [],
+  totalCompleted = 0,
+  totalPossible = 0,
+  completionPercent = 0,
+  bestDateObj = {},
+  year,
+  month,
+}) {
   const [goal, setGoal] = useState("");
   const [targetDate, setTargetDate] = useState("");
+  const [reward, setReward] = useState("");
   const [sacrifices, setSacrifices] = useState([""]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const saveTimeout = useRef(null);
 
-  // Fetch data
   useEffect(() => {
     async function fetchData() {
       try {
@@ -19,6 +33,7 @@ export default function GoalsAndSacrifices() {
           const data = await res.json();
           setGoal(data.goal || "");
           setTargetDate(data.targetDate || "");
+          setReward(data.reward || "");
           setSacrifices(
             data.sacrifices && data.sacrifices.length > 0
               ? data.sacrifices
@@ -33,12 +48,10 @@ export default function GoalsAndSacrifices() {
     fetchData();
   }, []);
 
-  // Auto-save with debounce
   const saveData = useCallback(
     async (currentGoal, currentTargetDate, currentSacrifices) => {
       setSaving(false);
       setSaved(true);
-
       try {
         await fetch("/api/goals", {
           method: "POST",
@@ -62,7 +75,6 @@ export default function GoalsAndSacrifices() {
   function triggerSave(newGoal, newTargetDate, newSacrifices) {
     setSaved(false);
     setSaveFailed(false);
-
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(
       () => saveData(newGoal, newTargetDate, newSacrifices),
@@ -84,17 +96,20 @@ export default function GoalsAndSacrifices() {
     triggerSave(goal, text, sacrifices);
   }
 
+  function handleRewardChange(e) {
+    const text = e.target.value;
+    setReward(text);
+  }
+
   function handleAddSacrifice(e) {
     e.preventDefault();
     if (!newSacrifice.trim()) return;
-
     let newSacrifices;
     if (sacrifices.length === 1 && sacrifices[0] === "") {
       newSacrifices = [newSacrifice.trim()];
     } else {
       newSacrifices = [...sacrifices, newSacrifice.trim()];
     }
-
     setSacrifices(newSacrifices);
     setNewSacrifice("");
     triggerSave(goal, targetDate, newSacrifices);
@@ -107,24 +122,22 @@ export default function GoalsAndSacrifices() {
     triggerSave(goal, targetDate, newSacrifices);
   }
 
+  // Streak ring
+  const streakRadius = 58;
+  const streakCirc = 2 * Math.PI * streakRadius;
+  const streakOffset = streakCirc - (completionPercent / 100) * streakCirc;
+
+  const bestDateStr = bestDateObj?.day
+    ? `${MONTH_NAMES[month]} ${bestDateObj.day}, ${year}`
+    : "";
+
   return (
-    <div
-      className="journal-section"
-      style={{
-        height: "100%",
-        boxSizing: "border-box",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div className="journal-header" style={{ marginBottom: "16px" }}>
-        <div className="journal-title-row">
-          <span className="journal-icon">🎯</span>
-          <h3 className="journal-title">Goal Focus</h3>
-          <span
-            className="journal-status"
-            style={{ marginLeft: "12px", fontSize: "12px" }}
-          >
+    <div className="goal-setup-section">
+      <div className="goal-setup-header">
+        <div className="goal-setup-title">
+          <span>🎯</span>
+          <span>Habit Tracker</span>
+          <span className="goal-setup-status">
             {saving
               ? "Saving..."
               : saved
@@ -136,175 +149,142 @@ export default function GoalsAndSacrifices() {
         </div>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-          flexGrow: 1,
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", gap: "16px" }}>
-          <div style={{ flex: 2 }}>
-            <div className="journal-date-label" style={{ marginBottom: "6px" }}>
-              My Goal
+      <div className="goal-setup-grid">
+        <div className="goal-setup-fields">
+          {/* Goal & Target */}
+          <div className="goal-setup-row">
+            <div className="goal-field" style={{ flex: 2 }}>
+              <label className="goal-field-label">What are you trying to achieve?</label>
+              <input
+                type="text"
+                className="goal-field-input"
+                placeholder="What are you trying to achieve?"
+                value={goal}
+                onChange={handleGoalChange}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="What are you trying to achieve?"
-              value={goal}
-              onChange={handleGoalChange}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "var(--radius-sm)",
-                border: "2px solid rgba(255, 255, 255, 0.05)",
-                outline: "none",
-                background: "rgba(10, 15, 30, 0.5)",
-                color: "var(--text-primary)",
-                fontSize: "14px",
-                boxSizing: "border-box",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
-              onBlur={(e) =>
-                (e.target.style.borderColor = "rgba(255, 255, 255, 0.05)")
-              }
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div className="journal-date-label" style={{ marginBottom: "6px" }}>
-              Target Date / Days
+            <div className="goal-field" style={{ flex: 1 }}>
+              <label className="goal-field-label">Target Days Done</label>
+              <input
+                type="text"
+                className="goal-field-input"
+                placeholder="E.g. 90 Days"
+                value={targetDate}
+                onChange={handleTargetDateChange}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="E.g. 90 Days or Oct 20"
-              value={targetDate}
-              onChange={handleTargetDateChange}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "var(--radius-sm)",
-                border: "2px solid rgba(255, 255, 255, 0.05)",
-                outline: "none",
-                background: "rgba(10, 15, 30, 0.5)",
-                color: "var(--text-primary)",
-                fontSize: "14px",
-                boxSizing: "border-box",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
-              onBlur={(e) =>
-                (e.target.style.borderColor = "rgba(255, 255, 255, 0.05)")
-              }
-            />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
-          <div className="journal-date-label" style={{ marginBottom: "8px" }}>
-            My Sacrifices
           </div>
 
-          <form
-            onSubmit={handleAddSacrifice}
-            style={{ display: "flex", gap: "8px", marginBottom: "12px" }}
-          >
-            <input
-              type="text"
-              placeholder="What will you sacrifice to achieve this?"
-              value={newSacrifice}
-              onChange={(e) => setNewSacrifice(e.target.value)}
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                borderRadius: "var(--radius-sm)",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
-                background: "rgba(10, 15, 30, 0.5)",
-                color: "var(--text-primary)",
-                fontSize: "13px",
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                background: "var(--accent)",
-                color: "#fff",
-                border: "none",
-                padding: "0 16px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "12px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Add
-            </button>
-          </form>
+          {/* Sacrifice & Reward */}
+          <div className="goal-setup-row">
+            <div className="goal-field">
+              <label className="goal-field-label">My Sacrifice</label>
+              <form
+                onSubmit={handleAddSacrifice}
+                style={{ display: "flex", gap: "8px" }}
+              >
+                <input
+                  type="text"
+                  className="goal-field-input"
+                  placeholder="What will you sacrifice?"
+                  value={newSacrifice}
+                  onChange={(e) => setNewSacrifice(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    background: "var(--accent)",
+                    color: "#fff",
+                    border: "none",
+                    padding: "0 16px",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Add
+                </button>
+              </form>
+            </div>
+            <div className="goal-field">
+              <label className="goal-field-label">My Reward</label>
+              <input
+                type="text"
+                className="goal-field-input"
+                placeholder="What's your reward?"
+                value={reward}
+                onChange={handleRewardChange}
+              />
+            </div>
+          </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "8px",
-              alignItems: "flex-start",
-            }}
-          >
+          {/* Sacrifice Tags */}
+          <div className="sacrifice-tags">
             {sacrifices
               .filter((s) => s.trim() !== "")
               .map((sac, index) => (
-                <div
-                  key={index}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "6px 12px",
-                    borderRadius: "20px",
-                    background: "rgba(20, 184, 166, 0.1)",
-                    border: "1px solid rgba(20, 184, 166, 0.3)",
-                    color: "var(--text-primary)",
-                    fontSize: "13px",
-                  }}
-                >
+                <div key={index} className="sacrifice-tag">
                   <span>{sac}</span>
                   <button
                     onClick={() => removeSacrifice(index)}
+                    className="sacrifice-tag-remove"
                     title="Remove"
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      cursor: "pointer",
-                      fontSize: "16px",
-                      padding: "0 2px",
-                      lineHeight: "1",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.target.style.color = "var(--accent)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.target.style.color = "var(--text-muted)")
-                    }
                   >
                     &times;
                   </button>
                 </div>
               ))}
-            {sacrifices.filter((s) => s.trim() !== "").length === 0 && (
-              <div
+          </div>
+
+          {/* Interaction hints */}
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", fontSize: "11px", color: "var(--text-muted)" }}>
+            <span>🖱️ Tap mark as complete</span>
+            <span>🖱️ Tap again to mark as missed</span>
+            <span>
+              <button
                 style={{
-                  fontSize: "13px",
-                  color: "var(--text-muted)",
-                  fontStyle: "italic",
-                  marginTop: "4px",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid var(--border)",
+                  color: "#fff",
+                  padding: "3px 10px",
+                  borderRadius: "4px",
+                  fontSize: "10px",
+                  cursor: "pointer",
+                  marginRight: "4px",
                 }}
               >
-                No sacrifices added yet.
-              </div>
-            )}
+                Clear
+              </button>
+              Double tap to clear habits
+            </span>
           </div>
+        </div>
+
+        {/* Streak Ring */}
+        <div className="streak-ring-container">
+          <div className="streak-ring-wrap">
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <circle className="streak-pr-bg" cx="70" cy="70" r={streakRadius} />
+              <motion.circle
+                className="streak-pr-fill"
+                cx="70"
+                cy="70"
+                r={streakRadius}
+                strokeDasharray={streakCirc}
+                initial={{ strokeDashoffset: streakCirc }}
+                animate={{ strokeDashoffset: streakOffset }}
+                transition={{ duration: 1.2, ease: "easeOut", delay: 0.5 }}
+              />
+            </svg>
+            <div className="streak-pr-text">
+              <span className="streak-pr-num">{totalCompleted}</span>
+              <span className="streak-pr-pct">{completionPercent}%</span>
+            </div>
+          </div>
+          <div className="streak-label">Best Streak</div>
+          {bestDateStr && <div className="streak-date">{bestDateStr}</div>}
         </div>
       </div>
     </div>
