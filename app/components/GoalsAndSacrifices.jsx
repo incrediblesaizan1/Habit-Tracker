@@ -227,7 +227,7 @@ export default function GoalsAndSacrifices({
             <span className="streak-pr-pct">{completionPercent}%</span>
           </div>
         </div>
-        <div className="streak-label">Best Streak</div>
+        <div className="streak-label">Best Day</div>
         {bestDateStr && <div className="streak-date">{bestDateStr}</div>}
       </div>
 

@@ -19,9 +19,13 @@ export default function DailyFocus({
   const today = new Date();
   const todayStr = `${MONTH_NAMES[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
   const totalHabits = habits.length;
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  const todayIncomplete = isCurrentMonth ? Math.max(0, totalHabits - totalCompleted + totalCrossed) : 0;
 
-  // Progress ring
-  const radius = 44;
+  // Progress ring — larger radius for readable text
+  const radius = 54;
+  const svgSize = 130;
+  const center = svgSize / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (completionPercent / 100) * circumference;
 
@@ -35,13 +39,13 @@ export default function DailyFocus({
         <div className="today-card-date">{todayStr}</div>
 
         {/* Progress Ring */}
-        <div className="focus-ring-wrap" style={{ margin: "16px auto" }}>
-          <svg width="100" height="100" viewBox="0 0 100 100">
-            <circle className="focus-pr-bg" cx="50" cy="50" r={radius} />
+        <div className="focus-ring-wrap" style={{ margin: "16px auto", width: `${svgSize}px`, height: `${svgSize}px` }}>
+          <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
+            <circle className="focus-pr-bg" cx={center} cy={center} r={radius} />
             <motion.circle
               className="focus-pr-fill"
-              cx="50"
-              cy="50"
+              cx={center}
+              cy={center}
               r={radius}
               strokeDasharray={circumference}
               initial={{ strokeDashoffset: circumference }}
@@ -67,25 +71,7 @@ export default function DailyFocus({
         </div>
       </div>
 
-      {/* Goal Progress */}
-      <div className="goal-progress-card" style={{ marginBottom: "12px" }}>
-        <div className="goal-progress-card-title">Goal Progress</div>
-        <div className="goal-progress-row">
-          <span className="goal-progress-big">{totalCompleted}/{totalPossible}</span>
-        </div>
-        <div className="goal-progress-bar" style={{ marginTop: "8px" }}>
-          <motion.div
-            className="goal-progress-bar-fill"
-            initial={{ width: 0 }}
-            animate={{
-              width: totalPossible > 0 ? `${(totalCompleted / totalPossible) * 100}%` : "0%",
-            }}
-            transition={{ duration: 1, delay: 0.3 }}
-          />
-        </div>
-      </div>
-
-      {/* Target Info */}
+      {/* Target Habits */}
       <div className="goal-progress-card">
         <div className="goal-progress-card-title">Target Habits</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -94,8 +80,8 @@ export default function DailyFocus({
             <div style={{ fontSize: "22px", fontWeight: "800", color: "#fff" }}>{totalHabits}</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "10px", color: "var(--red)", marginBottom: "2px" }}>Missed</div>
-            <div style={{ fontSize: "22px", fontWeight: "800", color: "var(--red)" }}>{totalCrossed}</div>
+            <div style={{ fontSize: "10px", color: "var(--orange)", marginBottom: "2px" }}>Incomplete</div>
+            <div style={{ fontSize: "22px", fontWeight: "800", color: "var(--orange)" }}>{todayIncomplete}</div>
           </div>
         </div>
       </div>
