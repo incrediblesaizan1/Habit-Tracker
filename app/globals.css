@@ -200,8 +200,8 @@ body {
   letter-spacing: 4px;
   text-transform: uppercase;
   margin-bottom: 20px;
-  color: var(--accent);
-  text-shadow: 0 0 30px rgba(20, 184, 166, 0.15);
+  color: #111111;
+  text-shadow: none;
 }
 
 /* ─── DAILY FOCUS ─── */
