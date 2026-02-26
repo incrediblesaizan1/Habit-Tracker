@@ -42,15 +42,15 @@ export default function YearProgress() {
   return (
     <div>
       <div style={{
-        fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase",
-        letterSpacing: "1px", fontWeight: "700", marginBottom: "8px",
+        fontSize: "14px", color: "var(--text-muted)", textTransform: "uppercase",
+        letterSpacing: "1px", fontWeight: "700", marginBottom: "10px",
       }}>
         Year Progress
       </div>
 
       <div style={{
-        height: "6px", width: "100%", background: "rgba(255,255,255,0.08)",
-        borderRadius: "3px", overflow: "hidden", marginBottom: "6px",
+        height: "8px", width: "100%", background: "rgba(255,255,255,0.08)",
+        borderRadius: "4px", overflow: "hidden", marginBottom: "8px",
       }}>
         <motion.div
           style={{
@@ -63,7 +63,7 @@ export default function YearProgress() {
       </div>
 
       <div style={{
-        fontSize: "11px", color: "var(--text-muted)",
+        fontSize: "14px", color: "var(--text-muted)",
         display: "flex", justifyContent: "space-between",
       }}>
         <span>{Math.round(progress)}% gone</span>
@@ -71,8 +71,8 @@ export default function YearProgress() {
       </div>
 
       <div style={{
-        fontStyle: "italic", fontSize: "11px", color: "var(--text-muted)",
-        lineHeight: "1.4", marginTop: "8px",
+        fontStyle: "italic", fontSize: "13px", color: "var(--text-muted)",
+        lineHeight: "1.4", marginTop: "10px",
       }}>
         &quot;{quote}&quot;
       </div>

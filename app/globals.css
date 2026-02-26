@@ -617,7 +617,6 @@ body {
 .habit-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
 }
 .habit-table th,
 .habit-table td {

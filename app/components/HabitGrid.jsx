@@ -185,7 +185,6 @@ export default function HabitGrid({
               </th>
             ))}
             <th className="col-done"></th>
-            <th className="col-total"></th>
           </tr>
         </thead>
         <tbody>
@@ -275,50 +274,12 @@ export default function HabitGrid({
                   );
                 })}
 
-                <td className="cell-done">
-                  <span className="done-text">
-                    {stats}/{isCurrentMonth ? todayDate : daysInMonth}
-                  </span>
-                </td>
-                <td className="cell-total">
-                  {(() => {
-                    const effectiveDays = isCurrentMonth
-                      ? todayDate
-                      : daysInMonth;
-                    const pct =
-                      effectiveDays > 0
-                        ? Math.round((stats / effectiveDays) * 100)
-                        : 0;
-                    return (
-                      <span
-                        className={`total-pct ${pct === 0 ? "zero" : "nonzero"}`}
-                      >
-                        {pct}%
-                      </span>
-                    );
-                  })()}
-                </td>
               </motion.tr>
             );
           })}
         </tbody>
       </motion.table>
 
-      {/* Legend */}
-      <div className="grid-legend">
-        <div className="legend-item">
-          <div className="legend-dot completed">✓</div>
-          <span>Tap to mark as complete</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-dot missed">✕</div>
-          <span>Tap again to mark as missed</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-dot empty"></div>
-          <span>Clear status</span>
-        </div>
-      </div>
     </div>
   );
 }
