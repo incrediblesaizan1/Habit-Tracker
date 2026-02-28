@@ -736,6 +736,7 @@ body {
   width: var(--w-sn);
   min-width: var(--w-sn);
   text-align: center;
+  white-space: nowrap;
   position: sticky;
   left: 0;
   z-index: 30;
@@ -745,6 +746,7 @@ body {
   width: var(--w-habit);
   min-width: var(--w-habit);
   text-align: left;
+  white-space: nowrap;
   padding-left: 12px !important;
   position: sticky;
   left: var(--w-sn);
@@ -754,7 +756,6 @@ body {
   clip-path: inset(0 -10px 0 0);
 }
 .col-day {
-  width: var(--w-day);
   min-width: var(--w-day);
 }
 .col-done {

@@ -35,7 +35,32 @@ export async function GET(request) {
     const anySnapshot = await MonthHabit.findOne({ userId }).lean();
 
     if (anySnapshot) {
-      // User has data for other months but not this one — return empty
+      // User has data for other months — inherit from the most recent previous month
+      const previousSnapshot = await MonthHabit.findOne(
+        { userId, monthKey: { $lt: monthKey } }
+      ).sort({ monthKey: -1 }).lean();
+
+      if (previousSnapshot && previousSnapshot.habits.length > 0) {
+        // Copy previous month's habits into this month
+        const inheritedHabits = previousSnapshot.habits.map((h) => ({
+          habitId: h.habitId,
+          name: h.name,
+        }));
+
+        await MonthHabit.create({
+          userId,
+          monthKey,
+          habits: inheritedHabits,
+        });
+
+        const mapped = inheritedHabits.map((h) => ({
+          id: h.habitId.toString(),
+          name: h.name,
+        }));
+        return NextResponse.json(mapped);
+      }
+
+      // No previous month with habits — return empty
       return NextResponse.json([]);
     }
 
