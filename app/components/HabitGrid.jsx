@@ -142,7 +142,7 @@ export default function HabitGrid({
   }, [daysInMonth, year, month, todayDate]);
 
   return (
-    <div className="grid-scroll" ref={scrollRef}>
+    <>
       {/* Instruction Tip */}
       <div className="grid-instruction-tip">
         <span className="tip-icon">💡</span>
@@ -152,6 +152,7 @@ export default function HabitGrid({
           <strong>Double-tap</strong> = clear ○
         </span>
       </div>
+      <div className="grid-scroll" ref={scrollRef}>
 
       <motion.table
         className="habit-table"
@@ -286,5 +287,6 @@ export default function HabitGrid({
         </tbody>
       </motion.table>
     </div>
+    </>
   );
 }

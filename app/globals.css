@@ -625,6 +625,13 @@ body {
   border-collapse: collapse;
   table-layout: fixed;
 }
+@media (max-width: 768px) {
+  .habit-table {
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
+  }
+}
 .habit-table th,
 .habit-table td {
   text-align: center;
@@ -764,6 +771,11 @@ body {
 .col-day {
   min-width: 0;
 }
+@media (max-width: 768px) {
+  .col-day {
+    min-width: var(--w-day);
+  }
+}
 .col-done {
   width: var(--w-done);
   min-width: var(--w-done);
@@ -848,6 +860,11 @@ body {
   padding: 1px !important;
   cursor: pointer;
   transition: background 0.15s;
+}
+@media (max-width: 768px) {
+  .cell-day {
+    padding: 2px !important;
+  }
 }
 .cell-day:hover {
   background: var(--bg-cell-hover);
