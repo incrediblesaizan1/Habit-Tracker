@@ -818,7 +818,9 @@ body {
 .habit-table tbody td.cell-habit {
   text-align: left;
   padding: 8px 12px;
-  white-space: nowrap;
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-word;
   position: sticky;
   left: var(--w-sn);
   z-index: 20;
@@ -835,6 +837,8 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: #fff;
+  flex: 1;
+  min-width: 0;
 }
 .habit-delete {
   opacity: 0;
