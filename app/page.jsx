@@ -38,11 +38,12 @@ export default function Home() {
     addHabit,
     removeHabit,
     loaded,
+    isFetching,
   } = useHabits();
 
   const [showModal, setShowModal] = useState(false);
 
-  if (!loaded) {
+  if (!loaded || isFetching) {
     return (
       <div className="loader-container">
         <div className="spinner" />

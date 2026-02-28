@@ -17,6 +17,7 @@ export function useHabits() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
   const [loaded, setLoaded] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
   const monthKey = getMonthKey(year, month);
   const daysInMonth = getDaysInMonth(year, month);
@@ -61,8 +62,15 @@ export function useHabits() {
   // Refetch habits and completions when month changes
   useEffect(() => {
     if (!loaded) return;
-    fetchMonthHabits(monthKey);
-    fetchCompletions(monthKey);
+    async function refresh() {
+      setIsFetching(true);
+      await Promise.all([
+        fetchMonthHabits(monthKey),
+        fetchCompletions(monthKey)
+      ]);
+      setIsFetching(false);
+    }
+    refresh();
   }, [monthKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper to get habit data for current month
@@ -331,6 +339,7 @@ export function useHabits() {
     addHabit,
     removeHabit,
     loaded,
+    isFetching,
     WEEKDAY_NAMES,
   };
 }
