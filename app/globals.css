@@ -620,15 +620,161 @@ body {
 .grid-scroll::-webkit-scrollbar {
   display: none;
 }
-.col-day {
-  min-width: var(--w-day);
+.habit-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+@media (max-width: 768px) {
+  .habit-table {
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
+  }
+}
+.habit-table th,
+.habit-table td {
+  text-align: center;
+  padding: 0;
 }
 
-.habit-table {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: collapse;
-  table-layout: auto;
+/* Instruction Tip */
+.grid-instruction-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(20, 184, 166, 0.04);
+  border: 1px solid rgba(20, 184, 166, 0.1);
+  border-radius: var(--radius-sm);
+  margin: 10px 16px 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.tip-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.tip-text {
+  line-height: 1.4;
+}
+.tip-text strong {
+  color: #fff;
+}
+
+/* Legend */
+.grid-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: center;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+.legend-dot.completed {
+  background: var(--accent);
+}
+.legend-dot.missed {
+  background: var(--red);
+}
+.legend-dot.empty {
+  border: 1.5px solid var(--cell-border);
+  background: transparent;
+}
+
+/* Week group headers */
+.week-header-row th {
+  padding: 4px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+}
+.week-header-row th.week-span {
+  background: rgba(20, 184, 166, 0.03);
+}
+.week-header-row th.col-sn,
+.week-header-row th.col-habits {
+  background: var(--bg-card-solid);
+  z-index: 20;
+}
+
+/* Day headers */
+.day-header-row th {
+  padding: 3px 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.day-letter {
+  display: block;
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 1px;
+}
+.day-num {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+.today-col .day-num {
+  color: var(--accent);
+}
+.today-col {
+  background: rgba(20, 184, 166, 0.06);
+}
+
+.col-sn {
+  width: var(--w-sn);
+  min-width: var(--w-sn);
+  text-align: center;
+  white-space: nowrap;
+  position: sticky;
+  left: 0;
+  z-index: 30;
+  background: var(--bg-card-solid);
+}
+.col-habits {
+  width: var(--w-habit);
+  min-width: var(--w-habit);
+  text-align: left;
+  white-space: nowrap;
+  padding-left: 12px !important;
+  position: sticky;
+  left: var(--w-sn);
+  z-index: 30;
+  background: var(--bg-card-solid);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+  clip-path: inset(0 -10px 0 0);
+}
+.col-day {
+  min-width: 0;
+}
+@media (max-width: 768px) {
+  .col-day {
+    min-width: var(--w-day);
+  }
 }
 .col-done {
   width: var(--w-done);
