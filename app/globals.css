@@ -1047,7 +1047,7 @@ body {
   stroke-linejoin: round;
 }
 .chart-dot {
-  fill: var(--orange);
+  fill: var(--text-muted);
   r: 2.5;
 }
 .chart-area-fill {
