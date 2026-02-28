@@ -614,23 +614,37 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   max-width: 100%;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.grid-scroll::-webkit-scrollbar {
-  display: none;
-}
-.habit-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
 }
 @media (max-width: 768px) {
-  .habit-table {
-    table-layout: auto;
-    width: max-content;
-    min-width: 100%;
+  .grid-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
+  .grid-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+@media (min-width: 769px) {
+  .grid-scroll::-webkit-scrollbar {
+    height: 8px;
+  }
+  .grid-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+  }
+  .grid-scroll::-webkit-scrollbar-thumb {
+    background: rgba(20, 184, 166, 0.2);
+    border-radius: 4px;
+  }
+  .grid-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(20, 184, 166, 0.4);
+  }
+}
+.habit-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
 }
 .habit-table th,
 .habit-table td {
@@ -769,12 +783,7 @@ body {
   clip-path: inset(0 -10px 0 0);
 }
 .col-day {
-  min-width: 0;
-}
-@media (max-width: 768px) {
-  .col-day {
-    min-width: var(--w-day);
-  }
+  min-width: var(--w-day);
 }
 .col-done {
   width: var(--w-done);
