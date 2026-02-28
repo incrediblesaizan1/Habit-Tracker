@@ -614,10 +614,16 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   max-width: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.grid-scroll::-webkit-scrollbar {
+  display: none;
 }
 .habit-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 .habit-table th,
 .habit-table td {
@@ -756,7 +762,7 @@ body {
   clip-path: inset(0 -10px 0 0);
 }
 .col-day {
-  min-width: var(--w-day);
+  min-width: 0;
 }
 .col-done {
   width: var(--w-done);
@@ -838,9 +844,8 @@ body {
 
 /* Day checkbox cells */
 .cell-day {
-  width: var(--w-day);
   height: 30px;
-  padding: 2px !important;
+  padding: 1px !important;
   cursor: pointer;
   transition: background 0.15s;
 }

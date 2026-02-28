@@ -158,14 +158,22 @@ export default function HabitGrid({
         initial="hidden"
         animate="visible"
         variants={tableVariants}
+        style={{ tableLayout: "fixed" }}
       >
+        <colgroup>
+          <col style={{ width: "var(--w-sn)" }} />
+          <col style={{ width: "var(--w-habit)" }} />
+          {dayHeaders.map((h) => (
+            <col key={h.day} />
+          ))}
+        </colgroup>
         <thead>
           <tr className="week-header-row">
             <th className="col-sn" rowSpan={2}>
-              HABIT NAME
+              
             </th>
             <th className="col-habits" rowSpan={2}>
-              
+              HABIT NAME
             </th>
             {weeks.map((w, i) => (
               <th key={i} className="week-span" colSpan={w.span}>
@@ -184,7 +192,6 @@ export default function HabitGrid({
                 <span className="day-num">{h.day}</span>
               </th>
             ))}
-            <th className="col-done"></th>
           </tr>
         </thead>
         <tbody>
@@ -273,13 +280,11 @@ export default function HabitGrid({
                     </td>
                   );
                 })}
-
               </motion.tr>
             );
           })}
         </tbody>
       </motion.table>
-
     </div>
   );
 }
