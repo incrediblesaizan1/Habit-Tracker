@@ -107,7 +107,7 @@ export default function GoalsAndSacrifices({
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`/api/goals?month=${month}&year=${year}`);
+        const res = await fetch(`/api/goals`);
         if (res.ok) {
           const data = await res.json();
           setGoal(data.goal || "");
@@ -122,7 +122,7 @@ export default function GoalsAndSacrifices({
       }
     }
     fetchData();
-  }, [month, year]);
+  }, []);
 
   const saveData = useCallback(
     async (currentGoal, currentTargetDate, currentSacrifices) => {
@@ -136,8 +136,6 @@ export default function GoalsAndSacrifices({
             goal: currentGoal,
             targetDate: currentTargetDate,
             sacrifices: currentSacrifices,
-            month: month,
-            year: year,
           }),
         });
       } catch (err) {
@@ -145,7 +143,7 @@ export default function GoalsAndSacrifices({
         setSaved(false); setSaving(false); setSaveFailed(true);
       }
     },
-    [month, year],
+    [],
   );
 
   function triggerSave(newGoal, newTargetDate, newSacrifices) {

@@ -10,17 +10,9 @@ export async function GET(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const month = parseInt(searchParams.get("month"), 10);
-  const year = parseInt(searchParams.get("year"), 10);
-
-  if (isNaN(month) || isNaN(year)) {
-    return NextResponse.json({ error: "Month and year are required" }, { status: 400 });
-  }
-
   try {
     await dbConnect();
-    const result = await Goal.findOne({ userId, month, year });
+    const result = await Goal.findOne({ userId });
     return NextResponse.json(result || { goal: "", targetDate: "", sacrifices: [""] });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -36,14 +28,10 @@ export async function POST(req) {
 
   try {
     await dbConnect();
-    const { goal, targetDate, sacrifices, month, year } = await req.json();
-
-    if (typeof month !== "number" || typeof year !== "number") {
-      return NextResponse.json({ error: "Month and year are required" }, { status: 400 });
-    }
+    const { goal, targetDate, sacrifices } = await req.json();
 
     const result = await Goal.findOneAndUpdate(
-      { userId, month, year },
+      { userId },
       { goal, targetDate, sacrifices, updatedAt: new Date() },
       { upsert: true, new: true }
     );
