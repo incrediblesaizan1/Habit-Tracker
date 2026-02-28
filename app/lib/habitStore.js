@@ -21,16 +21,16 @@ export function useHabits() {
   const monthKey = getMonthKey(year, month);
   const daysInMonth = getDaysInMonth(year, month);
 
-  // Fetch habits from API
-  const fetchHabits = useCallback(async () => {
+  // Fetch habits for a specific month from API
+  const fetchMonthHabits = useCallback(async (mk) => {
     try {
-      const res = await fetch("/api/habits");
+      const res = await fetch(`/api/month-habits?monthKey=${mk}`);
       if (res.ok) {
         const data = await res.json();
         setHabits(data);
       }
     } catch (err) {
-      console.error("Failed to fetch habits:", err);
+      console.error("Failed to fetch month habits:", err);
     }
   }, []);
 
@@ -51,16 +51,17 @@ export function useHabits() {
   // Initial load
   useEffect(() => {
     async function load() {
-      await fetchHabits();
+      await fetchMonthHabits(monthKey);
       await fetchCompletions(monthKey);
       setLoaded(true);
     }
     load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refetch completions when month changes
+  // Refetch habits and completions when month changes
   useEffect(() => {
     if (!loaded) return;
+    fetchMonthHabits(monthKey);
     fetchCompletions(monthKey);
   }, [monthKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -266,12 +267,12 @@ export function useHabits() {
     };
     setHabits((prev) => [...prev, optimisticHabit]);
 
-    // Sync with API in background
+    // Sync with API in background — scoped to current month
     try {
-      const res = await fetch("/api/habits", {
+      const res = await fetch("/api/month-habits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ monthKey, name }),
       });
       if (res.ok) {
         const newHabit = await res.json();
@@ -286,21 +287,25 @@ export function useHabits() {
       // Revert optimistic add on network error
       setHabits((prev) => prev.filter((h) => h.id !== tempId));
     }
-  }, []);
+  }, [monthKey]);
 
   const removeHabit = useCallback(
     async (habitId) => {
-      // Optimistic removal
+      // Optimistic removal — only from current month
       setHabits((prev) => prev.filter((h) => h.id !== habitId));
 
       try {
-        await fetch(`/api/habits/${habitId}`, { method: "DELETE" });
+        await fetch("/api/month-habits", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ monthKey, habitId }),
+        });
       } catch (err) {
         console.error("Failed to remove habit:", err);
-        fetchHabits(); // Revert on error
+        fetchMonthHabits(monthKey); // Revert on error
       }
     },
-    [fetchHabits],
+    [monthKey, fetchMonthHabits],
   );
 
   return {
