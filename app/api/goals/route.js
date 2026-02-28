@@ -20,6 +20,9 @@ export async function GET(request) {
 
   try {
     await dbConnect();
+    // Force Mongoose to drop outdated indexes (like the old unique userId index)
+    try { await Goal.syncIndexes(); } catch (e) { console.error("Index sync error:", e); }
+
     const result = await Goal.findOne({ userId, month, year });
     return NextResponse.json(result || { goal: "", targetDate: "", sacrifices: [""] });
   } catch (error) {
@@ -36,6 +39,9 @@ export async function POST(req) {
 
   try {
     await dbConnect();
+    // Force Mongoose to drop outdated indexes (like the old unique userId index)
+    try { await Goal.syncIndexes(); } catch (e) { console.error("Index sync error:", e); }
+
     const { goal, targetDate, sacrifices, month, year } = await req.json();
 
     if (typeof month !== "number" || typeof year !== "number") {
@@ -50,6 +56,7 @@ export async function POST(req) {
 
     return NextResponse.json(result);
   } catch (error) {
+    console.error("Save Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
