@@ -128,6 +128,17 @@ export default function ExpensesPage() {
       if (res.ok) {
         const newTx = await res.json();
         setTransactions((prev) => [newTx, ...prev]);
+
+        const amt = parseFloat(formAmount);
+        const newBalance = formType === "expense" ? currentBalance - amt : currentBalance + amt;
+        setCurrentBalance(newBalance);
+
+        fetch("/api/earning-goal", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentBalance: newBalance }),
+        }).catch((err) => console.error("Failed to update balance:", err));
+
         setFormAmount("");
         setFormDesc("");
         setFormCategory("Other");
@@ -141,9 +152,23 @@ export default function ExpensesPage() {
 
   async function handleDelete(id) {
     try {
+      const txToDelete = transactions.find((t) => t.id === id);
       const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
       if (res.ok) {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
+
+        if (txToDelete) {
+          const newBalance = txToDelete.type === "expense" 
+            ? currentBalance + txToDelete.amount 
+            : currentBalance - txToDelete.amount;
+          setCurrentBalance(newBalance);
+          
+          fetch("/api/earning-goal", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentBalance: newBalance }),
+          }).catch((err) => console.error("Failed to update balance:", err));
+        }
       }
     } catch (err) {
       console.error("Failed to delete:", err);
