@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useHabits } from "./lib/habitStore";
 import HabitGrid from "./components/HabitGrid";
@@ -99,6 +100,9 @@ export default function Home() {
                 ))}
               </select>
             </div>
+            <Link href="/expenses" className="header-nav-link">
+              💰 Expenses
+            </Link>
           </div>
         </header>
 
