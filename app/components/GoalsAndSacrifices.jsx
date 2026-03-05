@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
+import ModernNumberInput from "./ModernNumberInput";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -303,14 +304,13 @@ export default function GoalsAndSacrifices({
           borderRadius: "var(--radius-sm)", padding: "12px 14px",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-            <input
-              type="number"
+            <ModernNumberInput
               min="1"
-              className="goal-field-input"
+              className="center"
               placeholder="90"
               value={targetDate}
               onChange={(e) => { setTargetDate(e.target.value); triggerSave(goal, e.target.value, sacrifices); }}
-              style={{ width: "70px", textAlign: "center", padding: "6px 8px", fontSize: "16px", fontWeight: "700" }}
+              style={{ width: "90px", padding: "0" }}
             />
             <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>days</span>
             <div style={{ marginLeft: "auto", textAlign: "right" }}>

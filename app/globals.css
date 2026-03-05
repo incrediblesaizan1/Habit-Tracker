@@ -2572,3 +2572,85 @@ body {
   background: var(--accent-bg);
   color: #fff;
 }
+
+/* ─── MODERN NUMBER INPUT ─── */
+.modern-number-wrapper {
+  display: inline-flex;
+  align-items: stretch;
+  background: rgba(10, 15, 30, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08); /* Matches other inputs */
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  height: 100%;
+  min-height: 38px;
+}
+.modern-number-wrapper:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.modern-number-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.modern-number-wrapper.center .modern-number-input {
+  text-align: center;
+}
+.modern-number-input::-webkit-inner-spin-button,
+.modern-number-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.modern-spin-btns {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  width: 28px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.02);
+}
+.modern-spin-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  margin: 0;
+}
+.modern-spin-btn svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+.modern-spin-btn:hover {
+  background: rgba(20, 184, 166, 0.15);
+  color: var(--accent);
+}
+.modern-spin-btn:active {
+  background: var(--accent);
+  color: #fff;
+}
+.modern-spin-btn.up {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}

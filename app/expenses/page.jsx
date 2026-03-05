@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
+import ModernNumberInput from "../components/ModernNumberInput";
 
 const CATEGORIES_EXPENSE = [
   "Food",
@@ -265,14 +266,14 @@ export default function ExpensesPage() {
           <div className="expense-card-icon">💰</div>
           <div className="expense-card-label">Current Balance</div>
           {editingBalance ? (
-            <div className="expense-card-edit">
-              <input
-                type="number"
-                className="expense-inline-input"
+            <div className="expense-card-edit" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <ModernNumberInput
                 value={balanceInput}
                 onChange={(e) => setBalanceInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSaveBalance()}
                 autoFocus
+                step="1000"
+                style={{ flex: 1, height: "32px", fontSize: "14px", background: "rgba(10, 15, 30, 0.8)" }}
               />
               <button className="expense-save-btn" onClick={handleSaveBalance}>✓</button>
               <button className="expense-cancel-btn" onClick={() => setEditingBalance(false)}>✕</button>
@@ -366,14 +367,14 @@ export default function ExpensesPage() {
               <div className="expense-goal-row">
                 <span className="expense-goal-lbl">Goal</span>
                 {editingGoal ? (
-                  <div className="expense-card-edit inline-edit">
-                    <input
-                      type="number"
-                      className="expense-inline-input sm"
+                  <div className="expense-card-edit inline-edit" style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                    <ModernNumberInput
                       value={goalInput}
                       onChange={(e) => setGoalInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSaveGoal()}
                       autoFocus
+                      step="1000"
+                      style={{ width: "135px", height: "28px", fontSize: "13px", background: "rgba(10, 15, 30, 0.8)", borderColor: "rgba(255, 255, 255, 0.08)" }}
                     />
                     <button className="expense-save-btn" onClick={handleSaveGoal}>✓</button>
                     <button className="expense-cancel-btn" onClick={() => setEditingGoal(false)}>✕</button>
@@ -425,15 +426,15 @@ export default function ExpensesPage() {
               </button>
             </div>
             <div className="expense-form-fields">
-              <input
-                type="number"
+              <ModernNumberInput
                 placeholder="Amount (₹)"
-                className="expense-input"
                 value={formAmount}
                 onChange={(e) => setFormAmount(e.target.value)}
                 required
                 min="0"
                 step="0.01"
+                className="expense-input-wrapper"
+                style={{ height: "42px", background: "rgba(10, 15, 30, 0.5)", borderColor: "rgba(255, 255, 255, 0.06)", borderRadius: "var(--radius-sm)" }}
               />
               <input
                 type="text"
