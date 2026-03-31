@@ -61,7 +61,7 @@ export default function Home() {
         <header className="header">
           <div className="header-left">
             <h1>
-              <span className="accent">SK&apos;</span> HABIT{" "}
+              <span className="accent">&apos;</span> HABIT{" "}
               <strong>TRACKER</strong>
             </h1>
             <p className="header-subtitle">Build the life you want</p>
