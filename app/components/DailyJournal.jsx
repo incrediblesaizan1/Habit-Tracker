@@ -5,7 +5,7 @@ import Link from "next/link";
 export default function DailyJournal() {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(
-    today.toISOString().split("T")[0],
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
   );
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
