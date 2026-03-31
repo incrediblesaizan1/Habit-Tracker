@@ -62,7 +62,7 @@ export default function Home() {
           <div className="header-left">
             <h1>
               <span className="accent">&apos;</span> HABIT{" "}
-              <strong>TRACKER</strong>
+              <strong></strong>
             </h1>
             <p className="header-subtitle">Build the life you want</p>
           </div>
