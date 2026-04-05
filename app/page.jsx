@@ -71,7 +71,7 @@ export default function Home() {
     const sideColumnBottom = rightRect.top + rightRect.height;
     const availableGap = trackerBottom - sideColumnBottom;
 
-    setTimerPlacement(availableGap >= timerHeight + 16 ? "gap" : "full");
+    setTimerPlacement(availableGap >= timerHeight + 12 ? "gap" : "full");
   }, []);
 
   useEffect(() => {
@@ -224,7 +224,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: Goal & Habit Setup (no timer here — it lives below) */}
+          {/* Right: Goal & Habit Setup */}
           <div className="main-col-right">
             <div ref={rightRef}>
               <GoalsAndSacrifices
@@ -237,13 +237,29 @@ export default function Home() {
                 month={month}
               />
             </div>
+            {/* Timer in gap placement — inside right column below Goal Setup */}
+            {hasTimedHabits && timerPlacement === "gap" && (
+              <div ref={timerRef} style={{ marginTop: 12 }}>
+                <ActiveTimerPanel
+                  habits={habits}
+                  placement="gap"
+                  setDayStatus={setDayStatus}
+                  isDayCompleted={isDayCompleted}
+                />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Timer bar — always rendered once, placement controlled by CSS class */}
-        {hasTimedHabits && (
+        {/* Timer full-width bar — below both columns */}
+        {hasTimedHabits && timerPlacement === "full" && (
           <div ref={timerRef}>
-            <ActiveTimerPanel habits={habits} placement={timerPlacement} />
+            <ActiveTimerPanel
+              habits={habits}
+              placement="full"
+              setDayStatus={setDayStatus}
+              isDayCompleted={isDayCompleted}
+            />
           </div>
         )}
 
