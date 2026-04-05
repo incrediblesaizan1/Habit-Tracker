@@ -1,9 +1,14 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { db } from "../lib/firebase";
-import { collection, onSnapshot, query, orderBy, getDocs, deleteDoc, doc } from "firebase/firestore";
+import {
+  getTimerHistory,
+  getActivityLog,
+  clearAllHistory,
+  clearTimerHistory,
+  clearActivityLog,
+} from "../lib/activityLogger";
 import { formatDurationLabel } from "../lib/timeParser";
 
 const ACTION_LABELS = {
@@ -46,8 +51,6 @@ function formatSeconds(s) {
 
 export default function HistoryPage() {
   const { user } = useUser();
-  const uid = user?.id;
-
   const [tab, setTab] = useState("timers"); // "timers" | "activity"
   const [timerHistory, setTimerHistory] = useState([]);
   const [activityLog, setActivityLog] = useState([]);
@@ -55,27 +58,15 @@ export default function HistoryPage() {
   const [sortField, setSortField] = useState("timestamp");
   const [sortDir, setSortDir] = useState("desc");
 
-  // Load data from Firestore in real-time
+  // Load data from localStorage
+  const refreshData = useCallback(() => {
+    setTimerHistory(getTimerHistory());
+    setActivityLog(getActivityLog());
+  }, []);
+
   useEffect(() => {
-    if (!uid) return;
-
-    const timersRef = collection(db, "users", uid, "timerHistory");
-    const qTimers = query(timersRef, orderBy("createdAt", "desc"));
-    const unsubTimers = onSnapshot(qTimers, (snap) => {
-      setTimerHistory(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-    });
-
-    const activityRef = collection(db, "users", uid, "activityLog");
-    const qActivity = query(activityRef, orderBy("createdAt", "desc"));
-    const unsubActivity = onSnapshot(qActivity, (snap) => {
-      setActivityLog(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-    });
-
-    return () => {
-      unsubTimers();
-      unsubActivity();
-    };
-  }, [uid]);
+    refreshData();
+  }, [refreshData]);
 
   // Sort timer history
   const sortedTimerHistory = [...timerHistory].sort((a, b) => {
@@ -110,23 +101,11 @@ export default function HistoryPage() {
     }
   };
 
-  const handleClear = async (target) => {
-    if (!uid) return;
-    
-    try {
-      if (target === "all" || target === "timers") {
-        const snap = await getDocs(collection(db, "users", uid, "timerHistory"));
-        snap.forEach((docSnap) => deleteDoc(doc(db, "users", uid, "timerHistory", docSnap.id)));
-      }
-      
-      if (target === "all" || target === "activity") {
-        const snap = await getDocs(collection(db, "users", uid, "activityLog"));
-        snap.forEach((docSnap) => deleteDoc(doc(db, "users", uid, "activityLog", docSnap.id)));
-      }
-    } catch (e) {
-      console.error("Failed to clear history", e);
-    }
-    
+  const handleClear = (target) => {
+    if (target === "all") clearAllHistory();
+    else if (target === "timers") clearTimerHistory();
+    else if (target === "activity") clearActivityLog();
+    refreshData();
     setShowClearConfirm(false);
   };
 
