@@ -10,6 +10,7 @@ const MODAL_STATE_KEY = "sk_timerModal";
 const MIDNIGHT_CHECK_KEY = "sk_lastMidnightCheck";
 const COMPLETION_LOG_KEY = "sk_timerCompletions";
 const CUSTOM_TIMERS_KEY = "sk_customTimers";
+const API_SYNC_INTERVAL = 5000; // Sync to API every 5 seconds while running
 
 /**
  * Format total seconds into display string.
@@ -59,31 +60,110 @@ function sendNotification(title, body) {
   }
 }
 
-// ─── Persistence helpers ───
-function loadTimerStates() {
+// ═══════════════════════════════════════════
+// ─── Persistence helpers (localStorage as fast cache) ───
+// ═══════════════════════════════════════════
+function loadTimerStatesLocal() {
   try { return JSON.parse(localStorage.getItem(TIMER_STATE_KEY)) || {}; }
   catch { return {}; }
 }
-function saveTimerState(habitId, state) {
+function saveTimerStateLocal(habitId, state) {
   try {
-    const all = loadTimerStates();
+    const all = loadTimerStatesLocal();
     all[habitId] = { ...state, savedAt: Date.now() };
     localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(all));
   } catch { /* storage full */ }
 }
-function clearTimerState(habitId) {
+function clearTimerStateLocal(habitId) {
   try {
-    const all = loadTimerStates();
+    const all = loadTimerStatesLocal();
     delete all[habitId];
     localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(all));
   } catch { /* ignore */ }
 }
-function getSavedTimerState(habitId) {
-  const all = loadTimerStates();
+function getSavedTimerStateLocal(habitId) {
+  const all = loadTimerStatesLocal();
   return all[habitId] || null;
 }
 
-// ─── Modal state persistence ───
+// ─── API persistence helpers ───
+async function fetchAllTimerStatesAPI() {
+  try {
+    const res = await fetch("/api/timer-state");
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.error("Failed to fetch timer states from API:", err);
+  }
+  return null;
+}
+
+async function saveTimerStateAPI(habitId, state) {
+  try {
+    await fetch("/api/timer-state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        habitId,
+        remaining: state.remaining,
+        isRunning: state.isRunning,
+        phase: state.phase,
+        stopwatchTime: state.stopwatchTime,
+        goalReached: state.goalReached,
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to save timer state to API:", err);
+  }
+}
+
+async function clearTimerStateAPI(habitId) {
+  try {
+    await fetch("/api/timer-state", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ habitId }),
+    });
+  } catch (err) {
+    console.error("Failed to clear timer state from API:", err);
+  }
+}
+
+// ─── Custom timers API helpers ───
+async function fetchCustomTimersAPI() {
+  try {
+    const res = await fetch("/api/custom-timers");
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.error("Failed to fetch custom timers from API:", err);
+  }
+  return null;
+}
+
+async function saveCustomTimerAPI(timer) {
+  try {
+    await fetch("/api/custom-timers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(timer),
+    });
+  } catch (err) {
+    console.error("Failed to save custom timer to API:", err);
+  }
+}
+
+async function deleteCustomTimerAPI(id) {
+  try {
+    await fetch("/api/custom-timers", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  } catch (err) {
+    console.error("Failed to delete custom timer from API:", err);
+  }
+}
+
+// ─── Modal state persistence (local only — UI preference, not cross-device) ───
 function saveModalState(state) {
   try { localStorage.setItem(MODAL_STATE_KEY, JSON.stringify(state)); }
   catch { /* ignore */ }
@@ -97,12 +177,12 @@ function clearModalState() {
   catch { /* ignore */ }
 }
 
-// ─── Custom timers persistence ───
-function loadCustomTimers() {
+// ─── Local custom timers cache ───
+function loadCustomTimersLocal() {
   try { return JSON.parse(localStorage.getItem(CUSTOM_TIMERS_KEY)) || []; }
   catch { return []; }
 }
-function saveCustomTimers(timers) {
+function saveCustomTimersLocal(timers) {
   try { localStorage.setItem(CUSTOM_TIMERS_KEY, JSON.stringify(timers)); }
   catch { /* ignore */ }
 }
@@ -132,7 +212,7 @@ function wasTimerCompletedToday(habitId) {
   } catch { return false; }
 }
 function wasTimerStartedToday(habitId) {
-  const saved = getSavedTimerState(habitId);
+  const saved = getSavedTimerStateLocal(habitId);
   if (!saved) return false;
   if (saved.savedAt) {
     const savedDate = new Date(saved.savedAt);
@@ -142,12 +222,18 @@ function wasTimerStartedToday(habitId) {
   return false;
 }
 
-// ─── Individual Timer Logic (per-habit) with persistence ───
-function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete) {
-  const savedState = useRef(getSavedTimerState(habitId));
-  const initialState = useMemo(() => {
-    const saved = savedState.current;
+// ═══════════════════════════════════════════
+// ─── Individual Timer Logic with cross-device sync ───
+// ═══════════════════════════════════════════
+function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete, apiTimerStates) {
+  // Use API state first (cross-device), fall back to localStorage
+  const resolvedInitial = useMemo(() => {
+    const apiState = apiTimerStates?.[habitId] || null;
+    const localState = getSavedTimerStateLocal(habitId);
+    // Prefer API state if available (it's the cross-device truth)
+    const saved = apiState || localState;
     if (!saved) return null;
+
     if (saved.isRunning && saved.savedAt) {
       const elapsedSinceSave = Math.floor((Date.now() - saved.savedAt) / 1000);
       if (saved.phase === "countdown") {
@@ -174,24 +260,86 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
       }
     }
     return saved;
-  }, [totalSeconds, isOpenEnded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalSeconds, isOpenEnded, apiTimerStates]);
 
-  const [remaining, setRemaining] = useState(initialState?.remaining ?? totalSeconds);
-  const [isRunning, setIsRunning] = useState(initialState?.isRunning ?? false);
-  const [phase, setPhase] = useState(initialState?.phase ?? "countdown");
-  const [stopwatchTime, setStopwatchTime] = useState(initialState?.stopwatchTime ?? 0);
-  const [goalReached, setGoalReached] = useState(initialState?.goalReached ?? false);
+  const [remaining, setRemaining] = useState(resolvedInitial?.remaining ?? totalSeconds);
+  const [isRunning, setIsRunning] = useState(resolvedInitial?.isRunning ?? false);
+  const [phase, setPhase] = useState(resolvedInitial?.phase ?? "countdown");
+  const [stopwatchTime, setStopwatchTime] = useState(resolvedInitial?.stopwatchTime ?? 0);
+  const [goalReached, setGoalReached] = useState(resolvedInitial?.goalReached ?? false);
   const [justCompleted, setJustCompleted] = useState(false);
   const intervalRef = useRef(null);
+  const apiSyncRef = useRef(null);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // Persist state whenever it changes
+  // Re-sync from API when apiTimerStates changes (e.g., on initial load)
+  const hasInitialized = useRef(false);
   useEffect(() => {
-    saveTimerState(habitId, {
+    if (!apiTimerStates || hasInitialized.current) return;
+    hasInitialized.current = true;
+    const apiState = apiTimerStates[habitId];
+    if (!apiState) return;
+
+    let state = apiState;
+    if (state.isRunning && state.savedAt) {
+      const elapsed = Math.floor((Date.now() - state.savedAt) / 1000);
+      if (state.phase === "countdown") {
+        const newRem = Math.max(0, state.remaining - elapsed);
+        if (newRem === 0 && isOpenEnded) {
+          state = { ...state, remaining: 0, phase: "stopwatch", stopwatchTime: (state.stopwatchTime || 0) + (elapsed - state.remaining), goalReached: true };
+        } else if (newRem === 0 && !isOpenEnded) {
+          state = { ...state, remaining: 0, isRunning: false, goalReached: true };
+        } else {
+          state = { ...state, remaining: newRem };
+        }
+      } else {
+        state = { ...state, stopwatchTime: (state.stopwatchTime || 0) + elapsed };
+      }
+    }
+
+    setRemaining(state.remaining ?? totalSeconds);
+    setIsRunning(state.isRunning ?? false);
+    setPhase(state.phase ?? "countdown");
+    setStopwatchTime(state.stopwatchTime ?? 0);
+    setGoalReached(state.goalReached ?? false);
+  }, [apiTimerStates, habitId, isOpenEnded, totalSeconds]);
+
+  // Save to localStorage whenever state changes (immediate, local cache)
+  useEffect(() => {
+    saveTimerStateLocal(habitId, {
       remaining, isRunning, phase, stopwatchTime, goalReached
     });
   }, [habitId, remaining, isRunning, phase, stopwatchTime, goalReached]);
+
+  // Periodic API sync while running (every 5 seconds)
+  useEffect(() => {
+    if (isRunning) {
+      // Sync immediately on start
+      saveTimerStateAPI(habitId, { remaining, isRunning, phase, stopwatchTime, goalReached });
+
+      apiSyncRef.current = setInterval(() => {
+        // Read latest state from localStorage (always up-to-date from tick)
+        const latest = getSavedTimerStateLocal(habitId);
+        if (latest) {
+          saveTimerStateAPI(habitId, latest);
+        }
+      }, API_SYNC_INTERVAL);
+
+      return () => {
+        if (apiSyncRef.current) clearInterval(apiSyncRef.current);
+      };
+    } else {
+      // When paused/stopped, do a final sync
+      if (apiSyncRef.current) clearInterval(apiSyncRef.current);
+      // Only sync if we have a non-default state
+      if (remaining !== totalSeconds || phase !== "countdown" || stopwatchTime > 0 || goalReached) {
+        saveTimerStateAPI(habitId, { remaining, isRunning, phase, stopwatchTime, goalReached });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning, habitId]);
 
   // Timer tick
   useEffect(() => {
@@ -244,8 +392,13 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
 
   const pause = useCallback(() => {
     setIsRunning(false);
+    // Immediate API sync on pause
+    const latest = getSavedTimerStateLocal(habitId);
+    if (latest) {
+      saveTimerStateAPI(habitId, { ...latest, isRunning: false });
+    }
     logActivity({ action: "timer_paused", habitName });
-  }, [habitName]);
+  }, [habitName, habitId]);
 
   const reset = useCallback(() => {
     setIsRunning(false);
@@ -254,7 +407,8 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     setStopwatchTime(0);
     setGoalReached(false);
     setJustCompleted(false);
-    clearTimerState(habitId);
+    clearTimerStateLocal(habitId);
+    clearTimerStateAPI(habitId);
     logActivity({ action: "timer_reset", habitName });
   }, [totalSeconds, habitName, habitId]);
 
@@ -274,7 +428,8 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     setStopwatchTime(0);
     setGoalReached(false);
     setJustCompleted(false);
-    clearTimerState(habitId);
+    clearTimerStateLocal(habitId);
+    clearTimerStateAPI(habitId);
   }, [totalSeconds, remaining, stopwatchTime, goalReached, isOpenEnded, habitName, habitId]);
 
   const progress = totalSeconds > 0
@@ -296,9 +451,10 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted) {
         const info = parseTimeDuration(h.name);
         if (!info.detected) return;
         if (wasTimerStartedToday(h.id) && !wasTimerCompletedToday(h.id)) {
-          const saved = getSavedTimerState(h.id);
+          const saved = getSavedTimerStateLocal(h.id);
           if (saved && saved.isRunning) {
-            clearTimerState(h.id);
+            clearTimerStateLocal(h.id);
+            clearTimerStateAPI(h.id);
           }
         }
       });
@@ -331,10 +487,54 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted) {
 export default function ActiveTimerPanel({ habits, placement = "full", setDayStatus, isDayCompleted }) {
   const [customTimers, setCustomTimers] = useState([]);
   const [showAddTimer, setShowAddTimer] = useState(false);
+  const [apiTimerStates, setApiTimerStates] = useState(null);
 
-  // Load custom timers on mount
+  // Load custom timers from API (cross-device), fall back to localStorage
   useEffect(() => {
-    setCustomTimers(loadCustomTimers());
+    async function loadCustom() {
+      // Show local cache immediately
+      setCustomTimers(loadCustomTimersLocal());
+      // Then fetch from API for cross-device sync
+      const apiTimers = await fetchCustomTimersAPI();
+      if (apiTimers && apiTimers.length > 0) {
+        setCustomTimers(apiTimers);
+        saveCustomTimersLocal(apiTimers);
+      } else if (apiTimers && apiTimers.length === 0) {
+        // API returned empty — check if local has timers to migrate
+        const local = loadCustomTimersLocal();
+        if (local.length > 0) {
+          // Migrate local timers to API
+          for (const t of local) {
+            await saveCustomTimerAPI(t);
+          }
+          setCustomTimers(local);
+        }
+      }
+    }
+    loadCustom();
+  }, []);
+
+  // Fetch timer states from API on mount (cross-device sync)
+  useEffect(() => {
+    async function loadTimerStates() {
+      const apiStates = await fetchAllTimerStatesAPI();
+      if (apiStates) {
+        // Merge API states into localStorage cache
+        const local = loadTimerStatesLocal();
+        for (const [habitId, state] of Object.entries(apiStates)) {
+          const localState = local[habitId];
+          // Use whichever is more recent
+          if (!localState || (state.savedAt && (!localState.savedAt || state.savedAt > localState.savedAt))) {
+            saveTimerStateLocal(habitId, state);
+          }
+        }
+        setApiTimerStates(apiStates);
+      } else {
+        // API failed — use localStorage as fallback
+        setApiTimerStates(loadTimerStatesLocal());
+      }
+    }
+    loadTimerStates();
   }, []);
 
   const timedHabits = useMemo(() => {
@@ -373,7 +573,7 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
   useEffect(() => {
     const saved = loadModalState();
     if (saved && saved.isOpen && saved.habitId) {
-      const timerState = getSavedTimerState(saved.habitId);
+      const timerState = getSavedTimerStateLocal(saved.habitId);
       if (timerState && (timerState.isRunning || timerState.remaining < (saved.totalSeconds || Infinity))) {
         setModalOpen(true);
         setModalHabitId(saved.habitId);
@@ -413,7 +613,7 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
     }
   }, [modalOpen, modalHabitId]);
 
-  // Add custom timer
+  // Add custom timer — save to both local + API
   const handleAddCustomTimer = useCallback((name, hours, minutes, seconds, isOpenEnded) => {
     const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
     if (totalSeconds <= 0) return;
@@ -425,16 +625,19 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
     };
     const updated = [...customTimers, newTimer];
     setCustomTimers(updated);
-    saveCustomTimers(updated);
+    saveCustomTimersLocal(updated);
+    saveCustomTimerAPI(newTimer);
     setShowAddTimer(false);
   }, [customTimers]);
 
-  // Remove custom timer
+  // Remove custom timer — remove from both local + API
   const handleRemoveCustomTimer = useCallback((timerId) => {
     const updated = customTimers.filter(t => t.id !== timerId);
     setCustomTimers(updated);
-    saveCustomTimers(updated);
-    clearTimerState(timerId);
+    saveCustomTimersLocal(updated);
+    deleteCustomTimerAPI(timerId);
+    clearTimerStateLocal(timerId);
+    clearTimerStateAPI(timerId);
   }, [customTimers]);
 
   if (timedHabits.length === 0 && !showAddTimer) {
@@ -500,6 +703,7 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
             onMinimize={handleMinimize}
             isCustom={activeHabit.isCustom}
             onRemoveCustom={() => handleRemoveCustomTimer(activeHabit.id)}
+            apiTimerStates={apiTimerStates}
           />
         )}
 
@@ -530,9 +734,9 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
 // ═══════════════════════════════════════════
 function TimerWithSharedState({
   habit, totalSeconds, label, isOpenEnded, singleHabit,
-  onComplete, modalOpen, onModalOpen, onMinimize, isCustom, onRemoveCustom
+  onComplete, modalOpen, onModalOpen, onMinimize, isCustom, onRemoveCustom, apiTimerStates
 }) {
-  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id, onComplete);
+  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id, onComplete, apiTimerStates);
   const useHours = totalSeconds >= 3600;
 
   // When Start is clicked: start timer AND open modal
