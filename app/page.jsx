@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useHabits } from "./lib/habitStore";
+import { parseTimeDuration } from "./lib/timeParser";
 import HabitGrid from "./components/HabitGrid";
 import BottomCharts from "./components/StatsBar";
 import AddHabitModal from "./components/AddHabitModal";
@@ -10,6 +11,7 @@ import DailyJournal from "./components/DailyJournal";
 import GoalsAndSacrifices from "./components/GoalsAndSacrifices";
 import DailyFocus from "./components/DailyFocus";
 import YearProgress from "./components/YearProgress";
+import ActiveTimerPanel from "./components/ActiveTimerPanel";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -43,6 +45,32 @@ export default function Home() {
   } = useHabits();
 
   const [showModal, setShowModal] = useState(false);
+
+  // ─── ResizeObserver: determine timer panel placement ───
+  const centerRef = useRef(null);
+  const rightRef = useRef(null);
+  const [timerPlacement, setTimerPlacement] = useState("right"); // "right" | "full"
+
+  useEffect(() => {
+    const centerEl = centerRef.current;
+    const rightEl = rightRef.current;
+    if (!centerEl || !rightEl) return;
+
+    const observer = new ResizeObserver(() => {
+      const centerH = centerEl.getBoundingClientRect().height;
+      const rightH = rightEl.getBoundingClientRect().height;
+      setTimerPlacement(rightH < centerH ? "right" : "full");
+    });
+
+    observer.observe(centerEl);
+    observer.observe(rightEl);
+    return () => observer.disconnect();
+  }, []);
+
+  // Determine if we have any timed habits
+  const hasTimedHabits = useMemo(() => {
+    return habits.some((h) => parseTimeDuration(h.name).detected);
+  }, [habits]);
 
   if (!loaded || isFetching) {
     return (
@@ -100,6 +128,9 @@ export default function Home() {
                 ))}
               </select>
             </div>
+            <Link href="/history" className="header-nav-link">
+              📜 History
+            </Link>
             <Link href="/expenses" className="header-nav-link">
               💰 Expenses
             </Link>
@@ -137,7 +168,7 @@ export default function Home() {
           </div>
 
           {/* Center: Habit Tracker */}
-          <div className="main-col-center">
+          <div className="main-col-center" ref={centerRef}>
             <div className="habit-board">
               <div className="habit-board-header">
                 <h2 className="habit-board-title">Habit Tracker</h2>
@@ -164,8 +195,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: Goal & Habit Setup (vertical) */}
-          <div className="main-col-right">
+          {/* Right: Goal & Habit Setup + Timer (when side placement) */}
+          <div className="main-col-right" ref={rightRef}>
             <GoalsAndSacrifices
               habits={habits}
               totalCompleted={totalCompleted}
@@ -175,8 +206,17 @@ export default function Home() {
               year={year}
               month={month}
             />
+            {/* Timer in right column when right is shorter */}
+            {hasTimedHabits && timerPlacement === "right" && (
+              <ActiveTimerPanel habits={habits} isFullWidth={false} />
+            )}
           </div>
         </div>
+
+        {/* Timer as full-width bar when no room in side column */}
+        {hasTimedHabits && timerPlacement === "full" && (
+          <ActiveTimerPanel habits={habits} isFullWidth={true} />
+        )}
 
         {/* ─── INSIGHTS ─── */}
         <div className="insights-section">
