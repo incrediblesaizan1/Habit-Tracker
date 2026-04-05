@@ -8,6 +8,7 @@ const TIMER_STATE_KEY = "sk_timerStates";
 const MODAL_STATE_KEY = "sk_timerModal";
 const MIDNIGHT_CHECK_KEY = "sk_lastMidnightCheck";
 const COMPLETION_LOG_KEY = "sk_timerCompletions";
+const CUSTOM_TIMERS_KEY = "sk_customTimers";
 
 /**
  * Format total seconds into display string.
@@ -95,6 +96,16 @@ function clearModalState() {
   catch { /* ignore */ }
 }
 
+// ─── Custom timers persistence ───
+function loadCustomTimers() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_TIMERS_KEY)) || []; }
+  catch { return []; }
+}
+function saveCustomTimers(timers) {
+  try { localStorage.setItem(CUSTOM_TIMERS_KEY, JSON.stringify(timers)); }
+  catch { /* ignore */ }
+}
+
 // ─── Timer completion log for today ───
 function getTodayKey() {
   const d = new Date();
@@ -122,7 +133,6 @@ function wasTimerCompletedToday(habitId) {
 function wasTimerStartedToday(habitId) {
   const saved = getSavedTimerState(habitId);
   if (!saved) return false;
-  // Check if the timer was started/used today
   if (saved.savedAt) {
     const savedDate = new Date(saved.savedAt);
     const today = new Date();
@@ -192,7 +202,6 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
             if (isOpenEnded) {
               setPhase("stopwatch");
               setGoalReached(true);
-              // Auto-complete habit for open-ended
               if (onCompleteRef.current) onCompleteRef.current(habitId, habitName);
               logActivity({ action: "timer_goal_reached", habitName });
               return 0;
@@ -203,7 +212,6 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
               setJustCompleted(true);
               playChime();
               sendNotification("⏰ Timer Complete!", `${habitName} timer has finished!`);
-              // Auto-complete habit for fixed-duration
               if (onCompleteRef.current) onCompleteRef.current(habitId, habitName);
               logActivity({ action: "timer_completed", habitName });
               logTimerEvent({
@@ -211,7 +219,6 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
                 actualTime: totalSeconds, status: "completed",
                 isOpenEnded: false, extraTime: 0,
               });
-              // Auto-dismiss after 3 seconds
               setTimeout(() => setJustCompleted(false), 3000);
               return 0;
             }
@@ -284,26 +291,18 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted) {
     if (!habits || !setDayStatus || !isDayCompleted) return;
 
     const runCheck = () => {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayDay = yesterday.getDate();
-
       habits.forEach((h) => {
         const info = parseTimeDuration(h.name);
         if (!info.detected) return;
-        // Only cross if timer was started but NOT completed yesterday
         if (wasTimerStartedToday(h.id) && !wasTimerCompletedToday(h.id)) {
-          // Timer was used but not completed → mark as missed
           const saved = getSavedTimerState(h.id);
           if (saved && saved.isRunning) {
-            // Stop the running timer, save partial
             clearTimerState(h.id);
           }
         }
       });
     };
 
-    // Check on page load if last check was not today
     const lastCheck = localStorage.getItem(MIDNIGHT_CHECK_KEY);
     const today = getTodayKey();
     if (lastCheck && lastCheck !== today) {
@@ -311,7 +310,6 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted) {
     }
     localStorage.setItem(MIDNIGHT_CHECK_KEY, today);
 
-    // Schedule check at next midnight
     const now = new Date();
     const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
     const msUntilMidnight = nextMidnight.getTime() - now.getTime();
@@ -330,15 +328,38 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted) {
 // ─── Main Panel Component (Horizontal Bar) ───
 // ═══════════════════════════════════════════
 export default function ActiveTimerPanel({ habits, placement = "full", setDayStatus, isDayCompleted }) {
+  const [customTimers, setCustomTimers] = useState([]);
+  const [showAddTimer, setShowAddTimer] = useState(false);
+
+  // Load custom timers on mount
+  useEffect(() => {
+    setCustomTimers(loadCustomTimers());
+  }, []);
+
   const timedHabits = useMemo(() => {
-    return habits
+    const habitTimers = habits
       .map((h) => {
         const info = parseTimeDuration(h.name);
         if (!info.detected) return null;
-        return { ...h, timerInfo: info };
+        return { ...h, timerInfo: info, isCustom: false };
       })
       .filter(Boolean);
-  }, [habits]);
+
+    // Merge custom timers
+    const custom = customTimers.map((ct) => ({
+      id: ct.id,
+      name: ct.name,
+      timerInfo: {
+        detected: true,
+        totalSeconds: ct.totalSeconds,
+        label: formatDurationLabel(ct.totalSeconds),
+        isOpenEnded: ct.isOpenEnded || false,
+      },
+      isCustom: true,
+    }));
+
+    return [...habitTimers, ...custom];
+  }, [habits, customTimers]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
@@ -351,12 +372,10 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
   useEffect(() => {
     const saved = loadModalState();
     if (saved && saved.isOpen && saved.habitId) {
-      // Check if the timer for that habit is still running
       const timerState = getSavedTimerState(saved.habitId);
       if (timerState && (timerState.isRunning || timerState.remaining < (saved.totalSeconds || Infinity))) {
         setModalOpen(true);
         setModalHabitId(saved.habitId);
-        // Find the index of this habit
         const idx = timedHabits.findIndex(h => h.id === saved.habitId);
         if (idx >= 0) setActiveIndex(idx);
       } else {
@@ -375,19 +394,10 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
   const handleTimerComplete = useCallback((habitId, habitName) => {
     if (!setDayStatus || !habitId) return;
     const today = new Date().getDate();
-    // Only auto-complete if not already completed today
     if (isDayCompleted && isDayCompleted(habitId, today)) return;
     setDayStatus(habitId, today, "completed");
     markTimerCompleted(habitId);
   }, [setDayStatus, isDayCompleted]);
-
-  // Open modal when Start is clicked
-  const handleStart = useCallback((habitId, startFn) => {
-    startFn();
-    setModalHabitId(habitId);
-    setModalOpen(true);
-    saveModalState({ isOpen: true, habitId });
-  }, []);
 
   // Minimize modal (does NOT stop timer)
   const handleMinimize = useCallback(() => {
@@ -402,7 +412,46 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
     }
   }, [modalOpen, modalHabitId]);
 
-  if (timedHabits.length === 0) return null;
+  // Add custom timer
+  const handleAddCustomTimer = useCallback((name, hours, minutes, seconds, isOpenEnded) => {
+    const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+    if (totalSeconds <= 0) return;
+    const newTimer = {
+      id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      totalSeconds,
+      isOpenEnded,
+    };
+    const updated = [...customTimers, newTimer];
+    setCustomTimers(updated);
+    saveCustomTimers(updated);
+    setShowAddTimer(false);
+  }, [customTimers]);
+
+  // Remove custom timer
+  const handleRemoveCustomTimer = useCallback((timerId) => {
+    const updated = customTimers.filter(t => t.id !== timerId);
+    setCustomTimers(updated);
+    saveCustomTimers(updated);
+    clearTimerState(timerId);
+  }, [customTimers]);
+
+  if (timedHabits.length === 0 && !showAddTimer) {
+    // Show only a plus button when there are no timers
+    return (
+      <div className={`active-timer-bar timer-placement-${placement}`} style={{ justifyContent: "center", minHeight: "60px" }}>
+        <button className="atb-btn atb-btn-add-timer" onClick={() => setShowAddTimer(true)} title="Add Custom Timer">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M7 1v12M1 7h12" strokeLinecap="round" />
+          </svg>
+          <span>Add Timer</span>
+        </button>
+        {showAddTimer && (
+          <AddTimerModal onAdd={handleAddCustomTimer} onClose={() => setShowAddTimer(false)} />
+        )}
+      </div>
+    );
+  }
 
   const activeHabit = timedHabits[activeIndex];
 
@@ -422,6 +471,13 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
               >
                 <span className="atb-tab-name">{h.name}</span>
                 <span className="atb-tab-dur">{h.timerInfo.label}</span>
+                {h.isCustom && (
+                  <span
+                    className="atb-tab-remove"
+                    onClick={(e) => { e.stopPropagation(); handleRemoveCustomTimer(h.id); }}
+                    title="Remove custom timer"
+                  >×</span>
+                )}
               </button>
             ))}
           </div>
@@ -429,7 +485,7 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
 
         {/* Center + Right: Timer Display */}
         {activeHabit && (
-          <HorizontalTimerDisplay
+          <TimerWithSharedState
             key={activeHabit.id}
             habit={activeHabit}
             totalSeconds={activeHabit.timerInfo.totalSeconds}
@@ -437,21 +493,76 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
             isOpenEnded={activeHabit.timerInfo.isOpenEnded}
             singleHabit={timedHabits.length === 1}
             onComplete={handleTimerComplete}
-            onStart={handleStart}
+            modalOpen={modalOpen}
             onModalOpen={() => { setModalHabitId(activeHabit.id); setModalOpen(true); }}
+            onMinimize={handleMinimize}
+            isCustom={activeHabit.isCustom}
+            onRemoveCustom={() => handleRemoveCustomTimer(activeHabit.id)}
           />
         )}
+
+        {/* Plus button to add custom timer */}
+        <button
+          className="atb-btn atb-btn-add-timer"
+          onClick={() => setShowAddTimer(true)}
+          title="Add Custom Timer"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M7 1v12M1 7h12" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
 
-      {/* Running Timer Modal */}
-      {modalOpen && activeHabit && (
+      {/* Add Timer Modal */}
+      {showAddTimer && (
+        <AddTimerModal onAdd={handleAddCustomTimer} onClose={() => setShowAddTimer(false)} />
+      )}
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════
+// ─── Timer With Shared State ───
+// Both bar and modal use the SAME timer instance
+// ═══════════════════════════════════════════
+function TimerWithSharedState({
+  habit, totalSeconds, label, isOpenEnded, singleHabit,
+  onComplete, modalOpen, onModalOpen, onMinimize, isCustom, onRemoveCustom
+}) {
+  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id, onComplete);
+  const useHours = totalSeconds >= 3600;
+
+  // When Start is clicked: start timer AND open modal
+  const handleStart = useCallback(() => {
+    timer.start();
+    onModalOpen();
+    saveModalState({ isOpen: true, habitId: habit.id });
+  }, [timer, onModalOpen, habit.id]);
+
+  return (
+    <>
+      <HorizontalTimerDisplay
+        habit={habit}
+        totalSeconds={totalSeconds}
+        label={label}
+        isOpenEnded={isOpenEnded}
+        singleHabit={singleHabit}
+        timer={timer}
+        useHours={useHours}
+        onStart={handleStart}
+        onModalOpen={onModalOpen}
+        isCustom={isCustom}
+        onRemoveCustom={onRemoveCustom}
+      />
+      {modalOpen && (
         <TimerModal
-          habit={activeHabit}
-          totalSeconds={activeHabit.timerInfo.totalSeconds}
-          label={activeHabit.timerInfo.label}
-          isOpenEnded={activeHabit.timerInfo.isOpenEnded}
-          onMinimize={handleMinimize}
-          onComplete={handleTimerComplete}
+          habit={habit}
+          totalSeconds={totalSeconds}
+          label={label}
+          isOpenEnded={isOpenEnded}
+          timer={timer}
+          useHours={useHours}
+          onMinimize={onMinimize}
         />
       )}
     </>
@@ -461,10 +572,10 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
 // ═══════════════════════════════════════════
 // ─── Horizontal Timer Display (bar row) ───
 // ═══════════════════════════════════════════
-function HorizontalTimerDisplay({ habit, totalSeconds, label, isOpenEnded, singleHabit, onComplete, onStart, onModalOpen }) {
-  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id, onComplete);
-  const useHours = totalSeconds >= 3600;
-
+function HorizontalTimerDisplay({
+  habit, totalSeconds, label, isOpenEnded, singleHabit,
+  timer, useHours, onStart, onModalOpen, isCustom, onRemoveCustom
+}) {
   const RING_R = 24;
   const RING_CIRC = 2 * Math.PI * RING_R;
   const ringOffset = RING_CIRC - (timer.progress / 100) * RING_CIRC;
@@ -499,6 +610,13 @@ function HorizontalTimerDisplay({ habit, totalSeconds, label, isOpenEnded, singl
         <div className="atb-habit-label">
           <span className="atb-habit-name-text">{habit.name}</span>
           {isOpenEnded && <span className="atb-open-tag">OPEN</span>}
+          {isCustom && (
+            <button
+              className="atb-custom-remove-btn"
+              onClick={onRemoveCustom}
+              title="Remove custom timer"
+            >×</button>
+          )}
         </div>
       )}
 
@@ -538,7 +656,7 @@ function HorizontalTimerDisplay({ habit, totalSeconds, label, isOpenEnded, singl
 
       <div className="atb-controls">
         {!timer.isRunning ? (
-          <button className="atb-btn atb-btn-start" onClick={() => onStart(habit.id, timer.start)} title="Start">
+          <button className="atb-btn atb-btn-start" onClick={onStart} title="Start">
             <svg width="12" height="14" viewBox="0 0 14 16" fill="currentColor"><path d="M0 0L14 8L0 16Z" /></svg>
             <span>Start</span>
           </button>
@@ -571,11 +689,9 @@ function HorizontalTimerDisplay({ habit, totalSeconds, label, isOpenEnded, singl
 
 // ═══════════════════════════════════════════
 // ─── Timer Modal (full-screen overlay) ───
+// Now receives timer state from parent instead of creating its own
 // ═══════════════════════════════════════════
-function TimerModal({ habit, totalSeconds, label, isOpenEnded, onMinimize, onComplete }) {
-  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id, onComplete);
-  const useHours = totalSeconds >= 3600;
-
+function TimerModal({ habit, totalSeconds, label, isOpenEnded, timer, useHours, onMinimize }) {
   const RING_R = 78;
   const RING_CIRC = 2 * Math.PI * RING_R;
   const ringOffset = RING_CIRC - (timer.progress / 100) * RING_CIRC;
@@ -659,7 +775,7 @@ function TimerModal({ habit, totalSeconds, label, isOpenEnded, onMinimize, onCom
           <div className="timer-modal-goal-msg">✓ Goal Reached! Extra: {formatTime(timer.stopwatchTime, useHours)}</div>
         )}
 
-        {/* Controls — No Stop button here, only Pause and Reset */}
+        {/* Controls */}
         <div className="timer-modal-controls">
           {!timer.isRunning ? (
             <button className="atb-btn atb-btn-start timer-modal-btn" onClick={timer.start}>
@@ -685,4 +801,137 @@ function TimerModal({ habit, totalSeconds, label, isOpenEnded, onMinimize, onCom
       </div>
     </div>
   );
+}
+
+
+// ═══════════════════════════════════════════
+// ─── Add Custom Timer Modal ───
+// ═══════════════════════════════════════════
+function AddTimerModal({ onAdd, onClose }) {
+  const [name, setName] = useState("");
+  const [hours, setHours] = useState(0);
+  const [minutes, setMinutes] = useState(0);
+  const [seconds, setSeconds] = useState(0);
+  const [isOpenEnded, setIsOpenEnded] = useState(false);
+
+  const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim() || totalSeconds <= 0) return;
+    onAdd(name.trim(), hours, minutes, seconds, isOpenEnded);
+  };
+
+  return (
+    <div className="timer-modal-overlay" onClick={onClose}>
+      <div className="add-timer-modal-card" onClick={(e) => e.stopPropagation()}>
+        <button className="timer-modal-close" onClick={onClose}>✕</button>
+
+        <div className="add-timer-modal-icon">⏱</div>
+        <h3 className="add-timer-modal-title">Add Custom Timer</h3>
+
+        <form onSubmit={handleSubmit} className="add-timer-form">
+          <div className="add-timer-field">
+            <label htmlFor="custom-timer-name">Timer Name</label>
+            <input
+              id="custom-timer-name"
+              type="text"
+              placeholder="e.g. Focus Session"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              className="add-timer-input"
+            />
+          </div>
+
+          <div className="add-timer-field">
+            <label>Duration</label>
+            <div className="add-timer-duration-row">
+              <div className="add-timer-duration-unit">
+                <input
+                  type="number"
+                  min="0"
+                  max="23"
+                  value={hours}
+                  onChange={(e) => setHours(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="add-timer-input add-timer-num"
+                />
+                <span className="add-timer-unit-label">hrs</span>
+              </div>
+              <span className="add-timer-separator">:</span>
+              <div className="add-timer-duration-unit">
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={minutes}
+                  onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  className="add-timer-input add-timer-num"
+                />
+                <span className="add-timer-unit-label">min</span>
+              </div>
+              <span className="add-timer-separator">:</span>
+              <div className="add-timer-duration-unit">
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={seconds}
+                  onChange={(e) => setSeconds(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  className="add-timer-input add-timer-num"
+                />
+                <span className="add-timer-unit-label">sec</span>
+              </div>
+            </div>
+          </div>
+
+          {totalSeconds > 0 && (
+            <div className="add-timer-preview">
+              Total: {formatTime(totalSeconds, totalSeconds >= 3600)}
+            </div>
+          )}
+
+          <div className="add-timer-field add-timer-toggle-row">
+            <label htmlFor="custom-timer-open" className="add-timer-toggle-label">
+              <span>Open-ended</span>
+              <span className="add-timer-toggle-hint">(continue counting after goal)</span>
+            </label>
+            <button
+              type="button"
+              id="custom-timer-open"
+              className={`add-timer-toggle ${isOpenEnded ? "active" : ""}`}
+              onClick={() => setIsOpenEnded(prev => !prev)}
+            >
+              <span className="add-timer-toggle-thumb" />
+            </button>
+          </div>
+
+          <div className="add-timer-actions">
+            <button type="button" className="atb-btn atb-btn-reset" onClick={onClose}>Cancel</button>
+            <button
+              type="submit"
+              className="atb-btn atb-btn-start"
+              disabled={!name.trim() || totalSeconds <= 0}
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M7 1v12M1 7h12" strokeLinecap="round" />
+              </svg>
+              <span>Add Timer</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
+// Helper: format duration label (local copy to avoid circular dependency)
+function formatDurationLabel(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+  if (m > 0) return `${m}m ${String(s).padStart(2, "0")}s`;
+  return `${s}s`;
 }
