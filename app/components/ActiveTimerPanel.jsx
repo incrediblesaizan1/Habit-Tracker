@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { parseTimeDuration } from "../lib/timeParser";
 import { logTimerEvent, logActivity } from "../lib/activityLogger";
 
@@ -446,8 +447,9 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
           </svg>
           <span>Add Timer</span>
         </button>
-        {showAddTimer && (
-          <AddTimerModal onAdd={handleAddCustomTimer} onClose={() => setShowAddTimer(false)} />
+        {showAddTimer && typeof document !== "undefined" && createPortal(
+          <AddTimerModal onAdd={handleAddCustomTimer} onClose={() => setShowAddTimer(false)} />,
+          document.body
         )}
       </div>
     );
@@ -514,8 +516,9 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
       </div>
 
       {/* Add Timer Modal */}
-      {showAddTimer && (
-        <AddTimerModal onAdd={handleAddCustomTimer} onClose={() => setShowAddTimer(false)} />
+      {showAddTimer && typeof document !== "undefined" && createPortal(
+        <AddTimerModal onAdd={handleAddCustomTimer} onClose={() => setShowAddTimer(false)} />,
+        document.body
       )}
     </>
   );
@@ -554,7 +557,7 @@ function TimerWithSharedState({
         isCustom={isCustom}
         onRemoveCustom={onRemoveCustom}
       />
-      {modalOpen && (
+      {modalOpen && typeof document !== "undefined" && createPortal(
         <TimerModal
           habit={habit}
           totalSeconds={totalSeconds}
@@ -563,7 +566,8 @@ function TimerWithSharedState({
           timer={timer}
           useHours={useHours}
           onMinimize={onMinimize}
-        />
+        />,
+        document.body
       )}
     </>
   );
