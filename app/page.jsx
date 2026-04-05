@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useHabits } from "./lib/habitStore";
@@ -46,31 +46,55 @@ export default function Home() {
 
   const [showModal, setShowModal] = useState(false);
 
-  // ─── ResizeObserver: determine timer panel placement ───
-  // centerRef = habit tracker card, rightRef = GoalsAndSacrifices wrapper ONLY (not the timer)
+  // ─── ResizeObserver: determine timer placement ───
   const centerRef = useRef(null);
   const rightRef = useRef(null);
-  const [timerPlacement, setTimerPlacement] = useState("right"); // "right" | "full"
+  const timerRef = useRef(null);
+  const [timerPlacement, setTimerPlacement] = useState("full"); // "gap" | "full"
+
+  const evaluatePlacement = useCallback(() => {
+    // Mobile / single-column → always full-width
+    if (window.innerWidth <= 1200) {
+      setTimerPlacement("full");
+      return;
+    }
+    const centerEl = centerRef.current;
+    const rightEl = rightRef.current;
+    const timerEl = timerRef.current;
+    if (!centerEl || !rightEl) return;
+
+    const trackerRect = centerEl.getBoundingClientRect();
+    const rightRect = rightEl.getBoundingClientRect();
+    const timerHeight = timerEl ? timerEl.getBoundingClientRect().height : 110;
+
+    const trackerBottom = trackerRect.top + trackerRect.height;
+    const sideColumnBottom = rightRect.top + rightRect.height;
+    const availableGap = trackerBottom - sideColumnBottom;
+
+    setTimerPlacement(availableGap >= timerHeight + 16 ? "gap" : "full");
+  }, []);
 
   useEffect(() => {
     const centerEl = centerRef.current;
     const rightEl = rightRef.current;
     if (!centerEl || !rightEl) return;
 
-    const evaluate = () => {
-      const trackerHeight = centerEl.getBoundingClientRect().height;
-      const rightContentHeight = rightEl.getBoundingClientRect().height;
-      const availableSpace = trackerHeight - rightContentHeight;
-      // If >= 180px available below Goal Setup → place timer in right column
-      // Otherwise → render as full-width bar below the tracker
-      setTimerPlacement(availableSpace >= 180 ? "right" : "full");
-    };
-
-    const observer = new ResizeObserver(evaluate);
+    const observer = new ResizeObserver(evaluatePlacement);
     observer.observe(centerEl);
     observer.observe(rightEl);
-    return () => observer.disconnect();
-  }, []);
+    window.addEventListener("resize", evaluatePlacement);
+    // Initial evaluation
+    evaluatePlacement();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", evaluatePlacement);
+    };
+  }, [evaluatePlacement]);
+
+  // Re-evaluate when habits change (affects tracker height)
+  useEffect(() => {
+    evaluatePlacement();
+  }, [habits, evaluatePlacement]);
 
   // Determine if we have any timed habits
   const hasTimedHabits = useMemo(() => {
@@ -200,7 +224,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: Goal & Habit Setup */}
+          {/* Right: Goal & Habit Setup (no timer here — it lives below) */}
           <div className="main-col-right">
             <div ref={rightRef}>
               <GoalsAndSacrifices
@@ -213,16 +237,14 @@ export default function Home() {
                 month={month}
               />
             </div>
-            {/* Timer in right column when goals are shorter than tracker */}
-            {hasTimedHabits && timerPlacement === "right" && (
-              <ActiveTimerPanel habits={habits} isFullWidth={false} />
-            )}
           </div>
         </div>
 
-        {/* Timer as full-width bar when no room in side column */}
-        {hasTimedHabits && timerPlacement === "full" && (
-          <ActiveTimerPanel habits={habits} isFullWidth={true} />
+        {/* Timer bar — always rendered once, placement controlled by CSS class */}
+        {hasTimedHabits && (
+          <div ref={timerRef}>
+            <ActiveTimerPanel habits={habits} placement={timerPlacement} />
+          </div>
         )}
 
         {/* ─── INSIGHTS ─── */}

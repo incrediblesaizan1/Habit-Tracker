@@ -993,274 +993,275 @@ body {
   box-shadow: 0 0 20px var(--accent-glow);
   border-color: var(--accent);
 }
-/* ─── ACTIVE TIMER PANEL ─── */
-.active-timer-panel {
+/* ─── ACTIVE TIMER BAR (Horizontal) ─── */
+.active-timer-bar {
   background: var(--bg-card);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-.active-timer-panel.side-panel {
-  margin-top: 16px;
-}
-.active-timer-panel.full-width {
-  margin-bottom: 16px;
-}
-
-/* Panel Header */
-.atp-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 20px 10px;
-}
-.atp-icon {
-  font-size: 16px;
-}
-.atp-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-  flex: 1;
-}
-.atp-count {
-  font-size: 10px;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 3px 8px;
-  border-radius: 10px;
-  font-weight: 600;
+  gap: 12px;
+  padding: 14px 20px;
+  min-height: 90px;
+  max-height: 130px;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Habit Tabs */
-.atp-tabs {
+/* ─── Placement Modes ─── */
+.timer-placement-full {
+  width: 100%;
+  margin-top: 16px;
+}
+.timer-placement-gap {
+  width: 100%;
+  margin-top: 16px;
+}
+
+/* ─── Tabs Section (left) ─── */
+.atb-tabs-section {
   display: flex;
-  gap: 4px;
-  padding: 0 16px 12px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
+  flex-shrink: 0;
+  max-width: 320px;
+  padding-right: 8px;
+  border-right: 1px solid var(--border);
+  margin-right: 4px;
 }
-.atp-tabs::-webkit-scrollbar { display: none; }
-.atp-tab {
+.atb-tabs-section::-webkit-scrollbar { display: none; }
+
+.atb-tab {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 0;
-  max-width: 160px;
   font-family: inherit;
-  text-align: left;
+  text-align: center;
+  min-width: 0;
 }
-.atp-tab:hover {
+.atb-tab:hover {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
 }
-.atp-tab.active {
+.atb-tab.active {
   border-color: rgba(20, 184, 166, 0.4);
   background: rgba(20, 184, 166, 0.08);
   box-shadow: 0 0 12px rgba(20, 184, 166, 0.08);
 }
-.atp-tab-name {
+.atb-tab-name {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100px;
 }
-.atp-tab.active .atp-tab-name {
+.atb-tab.active .atb-tab-name {
   color: #fff;
 }
-.atp-tab-duration {
-  font-size: 9px;
+.atb-tab-dur {
+  font-size: 8px;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
 
-/* Timer Display */
-.atp-timer {
-  padding: 16px 20px 20px;
-  position: relative;
-}
-.atp-habit-name {
+/* ─── Timer Row (center + right) ─── */
+.atb-timer-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
 }
-.atp-open-badge {
-  font-size: 8px;
+
+/* Habit label (shown when single habit = no tabs) */
+.atb-habit-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+  margin-right: 4px;
+}
+.atb-habit-name-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.atb-open-tag {
+  font-size: 7px;
   font-weight: 800;
   color: var(--accent);
   background: rgba(20, 184, 166, 0.12);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
   letter-spacing: 0.8px;
   flex-shrink: 0;
 }
-.atp-phase-badge {
-  font-size: 8px;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 4px;
-  letter-spacing: 0.8px;
-  flex-shrink: 0;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.06);
-}
-.atp-phase-badge.state-running {
-  color: var(--accent);
-  background: rgba(20, 184, 166, 0.1);
-}
-.atp-phase-badge.state-paused {
-  color: var(--orange);
-  background: rgba(249, 115, 22, 0.1);
-}
-.atp-phase-badge.state-completed {
-  color: var(--green);
-  background: rgba(34, 197, 94, 0.1);
-}
-.atp-phase-badge.state-stopwatch {
-  color: var(--green);
-  background: rgba(34, 197, 94, 0.1);
-  animation: phase-pulse 2s ease-in-out infinite;
-}
-@keyframes phase-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-/* Ring Area */
-.atp-ring-area {
+
+/* ─── Ring + Time (compact) ─── */
+.atb-ring-time {
   display: flex;
-  justify-content: center;
-  margin-bottom: 12px;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
-.atp-ring-wrap {
-  position: relative;
-  width: 140px;
-  height: 140px;
+
+.atb-ring-compact {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
 }
-.atp-ring-wrap svg {
+.atb-ring-compact svg {
   transform: rotate(-90deg);
+  display: block;
 }
-.atp-ring-bg {
+.atb-ring-bg {
   stroke: rgba(255, 255, 255, 0.06);
 }
-.atp-ring-progress {
+.atb-ring-progress {
   stroke: var(--accent);
   transition: stroke-dashoffset 0.8s ease, stroke 0.3s;
 }
-.state-running .atp-ring-progress {
+.state-running .atb-ring-progress {
   stroke: var(--accent-light);
   filter: drop-shadow(0 0 4px var(--accent-glow));
 }
-.state-paused .atp-ring-progress {
+.state-paused .atb-ring-progress {
   stroke: var(--orange);
 }
-.state-completed .atp-ring-progress {
+.state-completed .atb-ring-progress {
   stroke: var(--green);
   filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.4));
 }
-.state-stopwatch .atp-ring-progress {
+.state-stopwatch .atb-ring-progress {
   stroke: var(--green);
   filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.4));
 }
-.atp-ring-extra {
+.atb-ring-extra {
   stroke: rgba(34, 197, 94, 0.3);
-  animation: ring-rotate 8s linear infinite;
+  animation: atb-ring-rotate 8s linear infinite;
 }
-@keyframes ring-rotate {
-  from { transform: rotate(0deg); transform-origin: 70px 70px; }
-  to { transform: rotate(360deg); transform-origin: 70px 70px; }
+@keyframes atb-ring-rotate {
+  from { transform: rotate(0deg); transform-origin: 28px 28px; }
+  to   { transform: rotate(360deg); transform-origin: 28px 28px; }
 }
 
-.atp-ring-text {
-  position: absolute;
-  inset: 0;
+/* Time block beside ring */
+.atb-time-block {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  gap: 1px;
 }
-.atp-time-display {
-  font-size: 28px;
+.atb-time-display {
+  font-size: 24px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   color: #fff;
   letter-spacing: 1px;
+  line-height: 1.1;
   transition: color 0.3s;
 }
-.state-running .atp-time-display {
+.state-running .atb-time-display {
   color: var(--accent-light);
   text-shadow: 0 0 12px var(--accent-glow);
 }
-.state-paused .atp-time-display {
+.state-paused .atb-time-display {
   color: var(--orange);
-  animation: timer-blink 1.2s step-end infinite;
+  animation: atb-timer-blink 1.2s step-end infinite;
 }
-.state-completed .atp-time-display,
-.state-stopwatch .atp-time-display {
+.state-completed .atb-time-display,
+.state-stopwatch .atb-time-display {
   color: var(--green);
 }
-@keyframes timer-blink {
+@keyframes atb-timer-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
-.atp-time-sub {
-  font-size: 10px;
+.atb-time-sub {
+  font-size: 9px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-weight: 600;
-  margin-top: 2px;
-}
-.state-stopwatch .atp-time-sub {
-  color: var(--green);
-}
-
-/* Status label */
-.atp-status {
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-bottom: 16px;
-  font-weight: 500;
-  min-height: 16px;
-  transition: color 0.3s;
-}
-.state-stopwatch .atp-status {
-  color: var(--green);
-  font-weight: 600;
-}
-.state-completed .atp-status {
-  color: var(--green);
   font-weight: 700;
 }
-
-/* Controls */
-.atp-controls {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
+.state-stopwatch .atb-time-sub {
+  color: var(--green);
 }
-.atp-btn {
+
+/* ─── Phase Badge ─── */
+.atb-phase-badge {
+  font-size: 8px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.8px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+@keyframes atb-phase-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.atb-phase-badge.state-running {
+  color: var(--accent);
+  background: rgba(20, 184, 166, 0.1);
+}
+.atb-phase-badge.state-paused {
+  color: var(--orange);
+  background: rgba(249, 115, 22, 0.1);
+}
+.atb-phase-badge.state-completed {
+  color: var(--green);
+  background: rgba(34, 197, 94, 0.1);
+}
+.atb-phase-badge.state-stopwatch {
+  color: var(--green);
+  background: rgba(34, 197, 94, 0.1);
+  animation: atb-phase-pulse 2s ease-in-out infinite;
+}
+
+/* Extra info badge for stopwatch */
+.atb-extra-info {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--green);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Controls (right) ─── */
+.atb-controls {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.atb-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 5px;
+  padding: 7px 14px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
@@ -1270,27 +1271,28 @@ body {
   font-size: 11px;
   font-weight: 600;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
-.atp-btn:hover {
+.atb-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.15);
   color: #fff;
   transform: translateY(-1px);
 }
-.atp-btn:active {
+.atb-btn:active {
   transform: translateY(0);
 }
-.atp-btn span {
+.atb-btn span {
   pointer-events: none;
 }
 
 /* Start */
-.atp-btn-start {
+.atb-btn-start {
   background: rgba(20, 184, 166, 0.12);
   border-color: rgba(20, 184, 166, 0.3);
   color: var(--accent);
 }
-.atp-btn-start:hover {
+.atb-btn-start:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
@@ -1298,12 +1300,12 @@ body {
 }
 
 /* Pause */
-.atp-btn-pause {
+.atb-btn-pause {
   background: rgba(249, 115, 22, 0.12);
   border-color: rgba(249, 115, 22, 0.3);
   color: var(--orange);
 }
-.atp-btn-pause:hover {
+.atb-btn-pause:hover {
   background: var(--orange);
   border-color: var(--orange);
   color: #fff;
@@ -1311,107 +1313,73 @@ body {
 }
 
 /* Reset */
-.atp-btn-reset {
+.atb-btn-reset {
   color: var(--text-muted);
 }
-.atp-btn-reset:hover {
+.atb-btn-reset:hover {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.3);
   color: var(--red);
 }
 
 /* Stop */
-.atp-btn-stop {
+.atb-btn-stop {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.2);
   color: var(--red);
 }
-.atp-btn-stop:hover {
+.atb-btn-stop:hover {
   background: var(--red);
   border-color: var(--red);
   color: #fff;
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
 }
 
-/* Goal Reached Badge */
-.atp-goal-badge {
-  position: absolute;
-  top: 12px;
-  right: 16px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--green);
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  padding: 4px 10px;
-  border-radius: 20px;
-  animation: goal-badge-in 0.5s ease-out;
-}
-@keyframes goal-badge-in {
-  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
-  60% { transform: scale(1.1) rotate(2deg); }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
-
-/* Full-width mode adjustments */
-.active-timer-panel.full-width .atp-timer {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-.active-timer-panel.full-width .atp-ring-area {
-  margin-bottom: 0;
-}
-.active-timer-panel.full-width .atp-ring-wrap {
-  width: 100px;
-  height: 100px;
-}
-.active-timer-panel.full-width .atp-ring-wrap svg {
-  width: 100px;
-  height: 100px;
-}
-.active-timer-panel.full-width .atp-time-display {
-  font-size: 22px;
-}
-.active-timer-panel.full-width .atp-habit-name {
-  margin-bottom: 0;
-  flex: 1;
-  min-width: 150px;
-}
-.active-timer-panel.full-width .atp-status {
-  margin-bottom: 0;
-  flex: 1;
-  min-width: 150px;
-  text-align: left;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .atp-ring-wrap {
-    width: 110px;
-    height: 110px;
-  }
-  .atp-ring-wrap svg {
-    width: 110px;
-    height: 110px;
-  }
-  .atp-time-display {
-    font-size: 22px;
-  }
-  .atp-controls {
+/* ─── Responsive: Timer Bar ─── */
+@media (max-width: 1200px) {
+  .active-timer-bar {
     flex-wrap: wrap;
+    max-height: none;
+    min-height: auto;
+    padding: 12px 16px;
   }
-  .atp-btn {
-    padding: 7px 12px;
-    font-size: 10px;
+  .atb-tabs-section {
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding-right: 0;
+    padding-bottom: 10px;
+    margin-right: 0;
+    margin-bottom: 4px;
+    width: 100%;
   }
-  .active-timer-panel.full-width .atp-timer {
-    flex-direction: column;
-    align-items: center;
+  .atb-timer-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
   }
-  .active-timer-panel.full-width .atp-status {
-    text-align: center;
+  .atb-habit-label {
+    border-right: none;
+    padding-right: 0;
+    margin-right: 0;
+    width: 100%;
+    justify-content: center;
+  }
+  .atb-controls {
+    margin-left: 0;
+    justify-content: center;
+    width: 100%;
+  }
+}
+@media (max-width: 480px) {
+  .atb-btn span {
+    display: none;
+  }
+  .atb-btn {
+    padding: 8px 10px;
+  }
+  .atb-time-display {
+    font-size: 20px;
   }
 }
 

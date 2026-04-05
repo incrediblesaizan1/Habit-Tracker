@@ -244,8 +244,8 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId) {
   };
 }
 
-// ─── Main Panel Component ───
-export default function ActiveTimerPanel({ habits, isFullWidth = false }) {
+// ─── Main Panel Component (Horizontal Bar) ───
+export default function ActiveTimerPanel({ habits, placement = "full" }) {
   const timedHabits = useMemo(() => {
     return habits
       .map((h) => {
@@ -269,52 +269,45 @@ export default function ActiveTimerPanel({ habits, isFullWidth = false }) {
   const activeHabit = timedHabits[activeIndex];
 
   return (
-    <div className={`active-timer-panel ${isFullWidth ? "full-width" : "side-panel"}`}>
-      <div className="atp-header">
-        <span className="atp-icon">⏱</span>
-        <h3 className="atp-title">Active Timer</h3>
-        {timedHabits.length > 1 && (
-          <span className="atp-count">{timedHabits.length} timers</span>
-        )}
-      </div>
-
-      {/* Habit Selector Tabs */}
+    <div className={`active-timer-bar timer-placement-${placement}`}>
+      {/* Left: Habit Tabs */}
       {timedHabits.length > 1 && (
-        <div className="atp-tabs">
+        <div className="atb-tabs-section">
           {timedHabits.map((h, i) => (
             <button
               key={h.id}
-              className={`atp-tab ${i === activeIndex ? "active" : ""}`}
+              className={`atb-tab ${i === activeIndex ? "active" : ""}`}
               onClick={() => setActiveIndex(i)}
               title={h.name}
             >
-              <span className="atp-tab-name">{h.name}</span>
-              <span className="atp-tab-duration">{h.timerInfo.label}</span>
+              <span className="atb-tab-name">{h.name}</span>
+              <span className="atb-tab-dur">{h.timerInfo.label}</span>
             </button>
           ))}
         </div>
       )}
 
-      {/* Timer Display */}
+      {/* Center + Right: Timer Display */}
       {activeHabit && (
-        <TimerDisplay
+        <HorizontalTimerDisplay
           key={activeHabit.id}
           habit={activeHabit}
           totalSeconds={activeHabit.timerInfo.totalSeconds}
           label={activeHabit.timerInfo.label}
           isOpenEnded={activeHabit.timerInfo.isOpenEnded}
+          singleHabit={timedHabits.length === 1}
         />
       )}
     </div>
   );
 }
 
-// ─── Timer Display for a single habit ───
-function TimerDisplay({ habit, totalSeconds, label, isOpenEnded }) {
+// ─── Horizontal Timer Display for a single habit ───
+function HorizontalTimerDisplay({ habit, totalSeconds, label, isOpenEnded, singleHabit }) {
   const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id);
   const useHours = totalSeconds >= 3600;
 
-  const RING_R = 62;
+  const RING_R = 24;
   const RING_CIRC = 2 * Math.PI * RING_R;
   const ringOffset = RING_CIRC - (timer.progress / 100) * RING_CIRC;
 
@@ -325,120 +318,115 @@ function TimerDisplay({ habit, totalSeconds, label, isOpenEnded }) {
   else if (timer.isRunning) stateClass = "state-running";
   else if (timer.remaining < totalSeconds) stateClass = "state-paused";
 
-  // Phase badge
+  // Phase badge text
   let phaseBadge = "";
   if (timer.phase === "stopwatch") phaseBadge = "GOAL REACHED";
   else if (timer.goalReached && !isOpenEnded) phaseBadge = "COMPLETED";
   else if (timer.isRunning) phaseBadge = "COUNTDOWN";
   else if (timer.remaining < totalSeconds) phaseBadge = "PAUSED";
 
-  // Status label
-  let statusLabel = "";
+  // Sub-label for time
+  let timeSub = "";
   if (timer.phase === "stopwatch") {
-    statusLabel = `✓ Goal reached! Extra: ${formatTime(timer.stopwatchTime, useHours)}`;
-  } else if (timer.goalReached && !isOpenEnded) {
-    statusLabel = "✓ Completed!";
-  } else if (timer.isRunning) {
-    statusLabel = `Goal: ${label} remaining`;
-  } else if (timer.remaining < totalSeconds) {
-    statusLabel = "Paused";
+    timeSub = "EXTRA TIME";
   } else {
-    statusLabel = isOpenEnded ? `${label}+ goal` : `${label} goal`;
+    timeSub = "REMAINING";
   }
 
   return (
-    <div className={`atp-timer ${stateClass}`}>
-      {/* Habit name + badges */}
-      <div className="atp-habit-name">
-        {isOpenEnded && <span className="atp-open-badge">OPEN</span>}
-        {phaseBadge && <span className={`atp-phase-badge ${stateClass}`}>{phaseBadge}</span>}
-        <span>{habit.name}</span>
-      </div>
+    <div className={`atb-timer-row ${stateClass}`}>
+      {/* Habit name (shown only when single habit — no tabs visible) */}
+      {singleHabit && (
+        <div className="atb-habit-label">
+          <span className="atb-habit-name-text">{habit.name}</span>
+          {isOpenEnded && <span className="atb-open-tag">OPEN</span>}
+        </div>
+      )}
 
-      {/* Ring + Time */}
-      <div className="atp-ring-area">
-        <div className="atp-ring-wrap">
-          <svg width="140" height="140" viewBox="0 0 140 140">
+      {/* Compact Ring + Time */}
+      <div className="atb-ring-time">
+        <div className="atb-ring-compact">
+          <svg width="56" height="56" viewBox="0 0 56 56">
             <circle
-              className="atp-ring-bg"
-              cx="70" cy="70" r={RING_R}
-              strokeWidth="6" fill="none"
+              className="atb-ring-bg"
+              cx="28" cy="28" r={RING_R}
+              strokeWidth="4" fill="none"
             />
             <circle
-              className="atp-ring-progress"
-              cx="70" cy="70" r={RING_R}
-              strokeWidth="6" fill="none"
+              className="atb-ring-progress"
+              cx="28" cy="28" r={RING_R}
+              strokeWidth="4" fill="none"
               strokeDasharray={RING_CIRC}
               strokeDashoffset={ringOffset}
               strokeLinecap="round"
             />
             {timer.phase === "stopwatch" && (
               <circle
-                className="atp-ring-extra"
-                cx="70" cy="70" r={RING_R - 10}
-                strokeWidth="3" fill="none"
-                strokeDasharray="6 4"
+                className="atb-ring-extra"
+                cx="28" cy="28" r={RING_R - 7}
+                strokeWidth="2" fill="none"
+                strokeDasharray="4 3"
                 strokeLinecap="round"
               />
             )}
           </svg>
-          <div className="atp-ring-text">
-            <span className="atp-time-display">
-              {timer.phase === "stopwatch"
-                ? formatTime(timer.stopwatchTime, useHours)
-                : formatTime(timer.remaining, useHours)}
-            </span>
-            <span className="atp-time-sub">
-              {timer.phase === "stopwatch" ? "extra" : "remaining"}
-            </span>
-          </div>
+        </div>
+        <div className="atb-time-block">
+          <span className="atb-time-display">
+            {timer.phase === "stopwatch"
+              ? formatTime(timer.stopwatchTime, useHours)
+              : formatTime(timer.remaining, useHours)}
+          </span>
+          <span className="atb-time-sub">{timeSub}</span>
         </div>
       </div>
 
-      {/* Status */}
-      <div className="atp-status">{statusLabel}</div>
+      {/* Phase Badge */}
+      {phaseBadge && (
+        <span className={`atb-phase-badge ${stateClass}`}>{phaseBadge}</span>
+      )}
+
+      {/* Stopwatch extra info */}
+      {timer.phase === "stopwatch" && (
+        <span className="atb-extra-info">
+          🎯 +{formatTime(timer.stopwatchTime, useHours)}
+        </span>
+      )}
 
       {/* Controls */}
-      <div className="atp-controls">
+      <div className="atb-controls">
         {!timer.isRunning ? (
-          <button className="atp-btn atp-btn-start" onClick={timer.start} title="Start">
-            <svg width="14" height="16" viewBox="0 0 14 16" fill="currentColor">
+          <button className="atb-btn atb-btn-start" onClick={timer.start} title="Start">
+            <svg width="12" height="14" viewBox="0 0 14 16" fill="currentColor">
               <path d="M0 0L14 8L0 16Z" />
             </svg>
             <span>Start</span>
           </button>
         ) : (
-          <button className="atp-btn atp-btn-pause" onClick={timer.pause} title="Pause">
-            <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+          <button className="atb-btn atb-btn-pause" onClick={timer.pause} title="Pause">
+            <svg width="10" height="12" viewBox="0 0 12 14" fill="currentColor">
               <rect x="0" y="0" width="4" height="14" />
               <rect x="8" y="0" width="4" height="14" />
             </svg>
             <span>Pause</span>
           </button>
         )}
-        <button className="atp-btn atp-btn-reset" onClick={timer.reset} title="Reset">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+        <button className="atb-btn atb-btn-reset" onClick={timer.reset} title="Reset">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M1 1v5h5" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M1 6A6 6 0 1 1 3 11" strokeLinecap="round" />
           </svg>
           <span>Reset</span>
         </button>
         {(timer.isRunning || timer.remaining < totalSeconds || timer.stopwatchTime > 0) && (
-          <button className="atp-btn atp-btn-stop" onClick={timer.stop} title="Stop & Log">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+          <button className="atb-btn atb-btn-stop" onClick={timer.stop} title="Stop & Log">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
               <rect x="0" y="0" width="12" height="12" rx="2" />
             </svg>
             <span>Stop</span>
           </button>
         )}
       </div>
-
-      {/* Goal reached floating badge */}
-      {timer.goalReached && timer.phase === "stopwatch" && (
-        <div className="atp-goal-badge">
-          <span>🎯 Goal Reached!</span>
-        </div>
-      )}
     </div>
   );
 }
