@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useHabits } from "./lib/habitStore";
@@ -46,9 +46,62 @@ export default function Home() {
 
   const [showModal, setShowModal] = useState(false);
 
-  // ─── Refs for layout ───
+  // ─── Dynamic timer placement ───
+  // "center" = below tracker in center column (when tracker is shorter than sides)
+  // "full"   = full-width below the 3-column layout (when tracker is tall)
   const centerRef = useRef(null);
   const rightRef = useRef(null);
+  const leftRef = useRef(null);
+  const [timerPlacement, setTimerPlacement] = useState("center");
+
+  const evaluatePlacement = useCallback(() => {
+    // Mobile / single-column → always full-width
+    if (window.innerWidth <= 1200) {
+      setTimerPlacement("full");
+      return;
+    }
+    const centerEl = centerRef.current;
+    const rightEl = rightRef.current;
+    const leftEl = leftRef.current;
+    if (!centerEl) return;
+
+    const centerRect = centerEl.getBoundingClientRect();
+    // Get the taller side column
+    const rightHeight = rightEl ? rightEl.getBoundingClientRect().height : 0;
+    const leftHeight = leftEl ? leftEl.getBoundingClientRect().height : 0;
+    const sideMaxHeight = Math.max(rightHeight, leftHeight);
+
+    // If the center column (habit tracker) is taller than or equal to the side columns,
+    // place timer full-width below the 3-column layout
+    if (centerRect.height >= sideMaxHeight) {
+      setTimerPlacement("full");
+    } else {
+      setTimerPlacement("center");
+    }
+  }, []);
+
+  useEffect(() => {
+    const centerEl = centerRef.current;
+    const rightEl = rightRef.current;
+    const leftEl = leftRef.current;
+    if (!centerEl) return;
+
+    const observer = new ResizeObserver(evaluatePlacement);
+    observer.observe(centerEl);
+    if (rightEl) observer.observe(rightEl);
+    if (leftEl) observer.observe(leftEl);
+    window.addEventListener("resize", evaluatePlacement);
+    evaluatePlacement();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", evaluatePlacement);
+    };
+  }, [evaluatePlacement]);
+
+  // Re-evaluate when habits change (affects tracker height)
+  useEffect(() => {
+    evaluatePlacement();
+  }, [habits, evaluatePlacement]);
 
   // Determine if we have any timed habits
   const hasTimedHabits = useMemo(() => {
@@ -137,7 +190,7 @@ export default function Home() {
         {/* ─── MAIN 3-COLUMN: Focus | Tracker | Goals ─── */}
         <div className="main-three-col">
           {/* Left: Daily Focus (vertical) */}
-          <div className="main-col-left">
+          <div className="main-col-left" ref={leftRef}>
             <DailyFocus
               habits={habits}
               year={year}
@@ -150,7 +203,7 @@ export default function Home() {
             />
           </div>
 
-          {/* Center: Habit Tracker + Timer */}
+          {/* Center: Habit Tracker */}
           <div className="main-col-center" ref={centerRef}>
             <div className="habit-board">
               <div className="habit-board-header">
@@ -177,8 +230,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Timer — positioned below the habit tracker, between side columns */}
-            {hasTimedHabits && (
+            {/* Timer in center placement — below tracker, between side columns */}
+            {hasTimedHabits && timerPlacement === "center" && (
               <div style={{ marginTop: 12 }}>
                 <ActiveTimerPanel
                   habits={habits}
@@ -205,6 +258,18 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Timer full-width — below the 3-column layout when tracker is tall */}
+        {hasTimedHabits && timerPlacement === "full" && (
+          <div style={{ marginTop: 12 }}>
+            <ActiveTimerPanel
+              habits={habits}
+              placement="full"
+              setDayStatus={setDayStatus}
+              isDayCompleted={isDayCompleted}
+            />
+          </div>
+        )}
 
         {/* ─── INSIGHTS ─── */}
         <div className="insights-section">

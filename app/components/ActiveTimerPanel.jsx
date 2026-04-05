@@ -675,12 +675,6 @@ function HorizontalTimerDisplay({
           </svg>
           <span>Reset</span>
         </button>
-        {(timer.isRunning || timer.remaining < totalSeconds || timer.stopwatchTime > 0) && (
-          <button className="atb-btn atb-btn-stop" onClick={timer.stop} title="Stop & Log">
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><rect x="0" y="0" width="12" height="12" rx="2" /></svg>
-            <span>Stop</span>
-          </button>
-        )}
       </div>
     </div>
   );
