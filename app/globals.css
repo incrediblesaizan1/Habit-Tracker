@@ -1018,6 +1018,10 @@ body {
   width: 100%;
   margin-top: 16px;
 }
+.timer-placement-center {
+  width: 100%;
+  margin-top: 0;
+}
 
 /* ─── Tabs Section (left) ─── */
 .atb-tabs-section {

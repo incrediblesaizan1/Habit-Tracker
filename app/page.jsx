@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { useHabits } from "./lib/habitStore";
@@ -46,55 +46,9 @@ export default function Home() {
 
   const [showModal, setShowModal] = useState(false);
 
-  // ─── ResizeObserver: determine timer placement ───
+  // ─── Refs for layout ───
   const centerRef = useRef(null);
   const rightRef = useRef(null);
-  const timerRef = useRef(null);
-  const [timerPlacement, setTimerPlacement] = useState("full"); // "gap" | "full"
-
-  const evaluatePlacement = useCallback(() => {
-    // Mobile / single-column → always full-width
-    if (window.innerWidth <= 1200) {
-      setTimerPlacement("full");
-      return;
-    }
-    const centerEl = centerRef.current;
-    const rightEl = rightRef.current;
-    const timerEl = timerRef.current;
-    if (!centerEl || !rightEl) return;
-
-    const trackerRect = centerEl.getBoundingClientRect();
-    const rightRect = rightEl.getBoundingClientRect();
-    const timerHeight = timerEl ? timerEl.getBoundingClientRect().height : 110;
-
-    const trackerBottom = trackerRect.top + trackerRect.height;
-    const sideColumnBottom = rightRect.top + rightRect.height;
-    const availableGap = trackerBottom - sideColumnBottom;
-
-    setTimerPlacement(availableGap >= timerHeight + 12 ? "gap" : "full");
-  }, []);
-
-  useEffect(() => {
-    const centerEl = centerRef.current;
-    const rightEl = rightRef.current;
-    if (!centerEl || !rightEl) return;
-
-    const observer = new ResizeObserver(evaluatePlacement);
-    observer.observe(centerEl);
-    observer.observe(rightEl);
-    window.addEventListener("resize", evaluatePlacement);
-    // Initial evaluation
-    evaluatePlacement();
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", evaluatePlacement);
-    };
-  }, [evaluatePlacement]);
-
-  // Re-evaluate when habits change (affects tracker height)
-  useEffect(() => {
-    evaluatePlacement();
-  }, [habits, evaluatePlacement]);
 
   // Determine if we have any timed habits
   const hasTimedHabits = useMemo(() => {
@@ -196,7 +150,7 @@ export default function Home() {
             />
           </div>
 
-          {/* Center: Habit Tracker */}
+          {/* Center: Habit Tracker + Timer */}
           <div className="main-col-center" ref={centerRef}>
             <div className="habit-board">
               <div className="habit-board-header">
@@ -222,6 +176,18 @@ export default function Home() {
                 </button>
               </div>
             </div>
+
+            {/* Timer — positioned below the habit tracker, between side columns */}
+            {hasTimedHabits && (
+              <div style={{ marginTop: 12 }}>
+                <ActiveTimerPanel
+                  habits={habits}
+                  placement="center"
+                  setDayStatus={setDayStatus}
+                  isDayCompleted={isDayCompleted}
+                />
+              </div>
+            )}
           </div>
 
           {/* Right: Goal & Habit Setup */}
@@ -237,31 +203,8 @@ export default function Home() {
                 month={month}
               />
             </div>
-            {/* Timer in gap placement — inside right column below Goal Setup */}
-            {hasTimedHabits && timerPlacement === "gap" && (
-              <div ref={timerRef} style={{ marginTop: 12 }}>
-                <ActiveTimerPanel
-                  habits={habits}
-                  placement="gap"
-                  setDayStatus={setDayStatus}
-                  isDayCompleted={isDayCompleted}
-                />
-              </div>
-            )}
           </div>
         </div>
-
-        {/* Timer full-width bar — below both columns */}
-        {hasTimedHabits && timerPlacement === "full" && (
-          <div ref={timerRef}>
-            <ActiveTimerPanel
-              habits={habits}
-              placement="full"
-              setDayStatus={setDayStatus}
-              isDayCompleted={isDayCompleted}
-            />
-          </div>
-        )}
 
         {/* ─── INSIGHTS ─── */}
         <div className="insights-section">
