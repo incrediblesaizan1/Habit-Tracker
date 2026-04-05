@@ -83,8 +83,14 @@ body {
   margin-bottom: 16px;
   align-items: start;
 }
-.main-col-left,
+.main-col-left {
+  position: sticky;
+  top: 20px;
+}
 .main-col-right {
+  align-self: start;
+}
+.main-col-right > div:first-child {
   position: sticky;
   top: 20px;
 }
@@ -95,8 +101,10 @@ body {
   .main-three-col {
     grid-template-columns: 1fr;
   }
-  .main-col-left,
-  .main-col-right {
+  .main-col-left {
+    position: static;
+  }
+  .main-col-right > div:first-child {
     position: static;
   }
 }

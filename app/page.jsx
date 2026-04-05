@@ -195,18 +195,20 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: Goal & Habit Setup + Timer (when side placement) */}
-          <div className="main-col-right" ref={rightRef}>
-            <GoalsAndSacrifices
-              habits={habits}
-              totalCompleted={totalCompleted}
-              totalPossible={totalPossible}
-              completionPercent={completionPercent}
-              bestDateObj={bestDateObj}
-              year={year}
-              month={month}
-            />
-            {/* Timer in right column when right is shorter */}
+          {/* Right: Goal & Habit Setup */}
+          <div className="main-col-right">
+            <div ref={rightRef}>
+              <GoalsAndSacrifices
+                habits={habits}
+                totalCompleted={totalCompleted}
+                totalPossible={totalPossible}
+                completionPercent={completionPercent}
+                bestDateObj={bestDateObj}
+                year={year}
+                month={month}
+              />
+            </div>
+            {/* Timer in right column when goals are shorter than tracker */}
             {hasTimedHabits && timerPlacement === "right" && (
               <ActiveTimerPanel habits={habits} isFullWidth={false} />
             )}
