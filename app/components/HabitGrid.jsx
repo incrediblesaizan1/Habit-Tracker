@@ -1,6 +1,8 @@
 "use client";
 import { useMemo, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
+import { parseTimeDuration } from "../lib/timeParser";
+import HabitTimer from "./HabitTimer";
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -198,11 +200,12 @@ export default function HabitGrid({
         <tbody>
           {habits.map((habit, hIndex) => {
             const stats = getHabitMonthlyCount(habit.id);
+            const timerInfo = parseTimeDuration(habit.name);
 
             return (
               <motion.tr
                 key={habit.id}
-                className="habit-row"
+                className={`habit-row${timerInfo.detected ? " has-timer" : ""}`}
                 variants={rowVariants}
                 initial="hidden"
                 animate="visible"
@@ -211,7 +214,10 @@ export default function HabitGrid({
                 <td className="cell-sn">{hIndex + 1}</td>
                 <td className="cell-habit">
                   <div className="habit-name-row">
-                    <span className="habit-label">{habit.name}</span>
+                    <span className="habit-label">
+                      {timerInfo.detected && <span className="timer-badge">⏱</span>}
+                      {habit.name}
+                    </span>
                     <button
                       className="habit-delete"
                       onClick={() => removeHabit(habit.id)}
@@ -220,6 +226,12 @@ export default function HabitGrid({
                       ✕
                     </button>
                   </div>
+                  {timerInfo.detected && (
+                    <HabitTimer
+                      totalSeconds={timerInfo.totalSeconds}
+                      label={timerInfo.label}
+                    />
+                  )}
                 </td>
                 {dayHeaders.map((dayObj) => {
                   const done = isDayCompleted(habit.id, dayObj.day);
