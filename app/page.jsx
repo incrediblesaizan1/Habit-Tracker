@@ -165,7 +165,7 @@ export default function Home() {
               </select>
             </div>
             <Link href="/history" className="header-nav-link">
-              📜 History
+              📜 Timer History
             </Link>
             <Link href="/expenses" className="header-nav-link">
               💰 Expenses
