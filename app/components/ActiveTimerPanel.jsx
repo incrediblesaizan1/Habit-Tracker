@@ -3,14 +3,17 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { parseTimeDuration, formatDurationLabel } from "../lib/timeParser";
 import { logTimerEvent, logActivity } from "../lib/activityLogger";
 
+// ─── Constants ───
+const TIMER_STATE_KEY = "sk_timerStates";
+
 /**
  * Format total seconds into display string.
- * Always HH:MM:SS if totalDuration >= 1 hour, else MM:SS
  */
 function formatTime(seconds, useHours = false) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
+  const abs = Math.abs(seconds);
+  const h = Math.floor(abs / 3600);
+  const m = Math.floor((abs % 3600) / 60);
+  const s = abs % 60;
 
   if (useHours || h > 0) {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
@@ -52,19 +55,94 @@ function sendNotification(title, body) {
   }
 }
 
-// ─── Individual Timer Logic (per-habit) ───
-function useTimerState(totalSeconds, isOpenEnded, habitName) {
-  const [remaining, setRemaining] = useState(totalSeconds);
-  const [isRunning, setIsRunning] = useState(false);
-  const [phase, setPhase] = useState("countdown"); // "countdown" | "stopwatch"
-  const [stopwatchTime, setStopwatchTime] = useState(0);
-  const [goalReached, setGoalReached] = useState(false);
+// ─── Persistence helpers ───
+function loadTimerStates() {
+  try {
+    return JSON.parse(localStorage.getItem(TIMER_STATE_KEY)) || {};
+  } catch { return {}; }
+}
+
+function saveTimerState(habitId, state) {
+  try {
+    const all = loadTimerStates();
+    all[habitId] = { ...state, savedAt: Date.now() };
+    localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(all));
+  } catch { /* storage full */ }
+}
+
+function clearTimerState(habitId) {
+  try {
+    const all = loadTimerStates();
+    delete all[habitId];
+    localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(all));
+  } catch { /* ignore */ }
+}
+
+function getSavedTimerState(habitId) {
+  const all = loadTimerStates();
+  return all[habitId] || null;
+}
+
+// ─── Individual Timer Logic (per-habit) with persistence ───
+function useTimerState(totalSeconds, isOpenEnded, habitName, habitId) {
+  // Load persisted state on mount
+  const savedState = useRef(getSavedTimerState(habitId));
+  const initialState = useMemo(() => {
+    const saved = savedState.current;
+    if (!saved) return null;
+
+    // Calculate elapsed time since save if timer was running
+    if (saved.isRunning && saved.savedAt) {
+      const elapsedSinceSave = Math.floor((Date.now() - saved.savedAt) / 1000);
+      if (saved.phase === "countdown") {
+        const newRemaining = Math.max(0, saved.remaining - elapsedSinceSave);
+        if (newRemaining === 0 && isOpenEnded) {
+          // Would have transitioned to stopwatch
+          const overflowTime = elapsedSinceSave - saved.remaining;
+          return {
+            remaining: 0,
+            phase: "stopwatch",
+            stopwatchTime: (saved.stopwatchTime || 0) + overflowTime,
+            goalReached: true,
+            isRunning: true,
+          };
+        } else if (newRemaining === 0 && !isOpenEnded) {
+          // Would have completed
+          return {
+            remaining: 0,
+            phase: "countdown",
+            stopwatchTime: 0,
+            goalReached: true,
+            isRunning: false,
+          };
+        }
+        return { ...saved, remaining: newRemaining };
+      } else {
+        // Stopwatch phase — add elapsed time
+        return {
+          ...saved,
+          stopwatchTime: (saved.stopwatchTime || 0) + elapsedSinceSave,
+        };
+      }
+    }
+    return saved;
+  }, [totalSeconds, isOpenEnded]);
+
+  const [remaining, setRemaining] = useState(initialState?.remaining ?? totalSeconds);
+  const [isRunning, setIsRunning] = useState(initialState?.isRunning ?? false);
+  const [phase, setPhase] = useState(initialState?.phase ?? "countdown");
+  const [stopwatchTime, setStopwatchTime] = useState(initialState?.stopwatchTime ?? 0);
+  const [goalReached, setGoalReached] = useState(initialState?.goalReached ?? false);
   const intervalRef = useRef(null);
-  const startedAtRef = useRef(null);
 
-  // Total elapsed time for logging
-  const elapsedTime = totalSeconds - remaining + stopwatchTime;
+  // Persist state whenever it changes
+  useEffect(() => {
+    saveTimerState(habitId, {
+      remaining, isRunning, phase, stopwatchTime, goalReached
+    });
+  }, [habitId, remaining, isRunning, phase, stopwatchTime, goalReached]);
 
+  // Timer tick
   useEffect(() => {
     if (!isRunning) return;
 
@@ -72,16 +150,12 @@ function useTimerState(totalSeconds, isOpenEnded, habitName) {
       if (phase === "countdown") {
         setRemaining((prev) => {
           if (prev <= 1) {
-            // Countdown reached zero
             if (isOpenEnded) {
-              // Switch to stopwatch phase
               setPhase("stopwatch");
               setGoalReached(true);
               logActivity({ action: "timer_goal_reached", habitName });
-              // Don't stop — continue as stopwatch
               return 0;
             } else {
-              // Fixed duration: complete
               clearInterval(intervalRef.current);
               setIsRunning(false);
               setGoalReached(true);
@@ -102,7 +176,6 @@ function useTimerState(totalSeconds, isOpenEnded, habitName) {
           return prev - 1;
         });
       } else {
-        // Stopwatch phase — count up
         setStopwatchTime((prev) => prev + 1);
       }
     }, 1000);
@@ -113,13 +186,11 @@ function useTimerState(totalSeconds, isOpenEnded, habitName) {
   }, [isRunning, phase, isOpenEnded, habitName, totalSeconds]);
 
   const start = useCallback(() => {
-    if (!startedAtRef.current) startedAtRef.current = Date.now();
-    setIsRunning(true);
     if (remaining === 0 && phase === "countdown" && !isOpenEnded) {
-      // Reset if completed fixed-duration
       setRemaining(totalSeconds);
       setGoalReached(false);
     }
+    setIsRunning(true);
     logActivity({ action: "timer_started", habitName });
   }, [remaining, phase, isOpenEnded, totalSeconds, habitName]);
 
@@ -134,12 +205,11 @@ function useTimerState(totalSeconds, isOpenEnded, habitName) {
     setPhase("countdown");
     setStopwatchTime(0);
     setGoalReached(false);
-    startedAtRef.current = null;
+    clearTimerState(habitId);
     logActivity({ action: "timer_reset", habitName });
-  }, [totalSeconds, habitName]);
+  }, [totalSeconds, habitName, habitId]);
 
   const stop = useCallback(() => {
-    // Stop and log the session
     setIsRunning(false);
     const actualTime = totalSeconds - remaining + stopwatchTime;
     let status = "partial";
@@ -156,13 +226,12 @@ function useTimerState(totalSeconds, isOpenEnded, habitName) {
     });
     logActivity({ action: "timer_stopped", habitName });
 
-    // Reset state
     setRemaining(totalSeconds);
     setPhase("countdown");
     setStopwatchTime(0);
     setGoalReached(false);
-    startedAtRef.current = null;
-  }, [totalSeconds, remaining, stopwatchTime, goalReached, isOpenEnded, habitName]);
+    clearTimerState(habitId);
+  }, [totalSeconds, remaining, stopwatchTime, goalReached, isOpenEnded, habitName, habitId]);
 
   const progress = totalSeconds > 0
     ? Math.min(100, ((totalSeconds - remaining) / totalSeconds) * 100)
@@ -170,14 +239,13 @@ function useTimerState(totalSeconds, isOpenEnded, habitName) {
 
   return {
     remaining, isRunning, phase, stopwatchTime, goalReached,
-    progress, elapsedTime,
+    progress,
     start, pause, reset, stop,
   };
 }
 
 // ─── Main Panel Component ───
 export default function ActiveTimerPanel({ habits, isFullWidth = false }) {
-  // Find all timer-enabled habits
   const timedHabits = useMemo(() => {
     return habits
       .map((h) => {
@@ -190,7 +258,6 @@ export default function ActiveTimerPanel({ habits, isFullWidth = false }) {
 
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Clamp activeIndex if habits list changes
   useEffect(() => {
     if (activeIndex >= timedHabits.length) {
       setActiveIndex(Math.max(0, timedHabits.length - 1));
@@ -211,7 +278,7 @@ export default function ActiveTimerPanel({ habits, isFullWidth = false }) {
         )}
       </div>
 
-      {/* Habit Tabs */}
+      {/* Habit Selector Tabs */}
       {timedHabits.length > 1 && (
         <div className="atp-tabs">
           {timedHabits.map((h, i) => (
@@ -244,7 +311,7 @@ export default function ActiveTimerPanel({ habits, isFullWidth = false }) {
 
 // ─── Timer Display for a single habit ───
 function TimerDisplay({ habit, totalSeconds, label, isOpenEnded }) {
-  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name);
+  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id);
   const useHours = totalSeconds >= 3600;
 
   const RING_R = 62;
@@ -258,10 +325,17 @@ function TimerDisplay({ habit, totalSeconds, label, isOpenEnded }) {
   else if (timer.isRunning) stateClass = "state-running";
   else if (timer.remaining < totalSeconds) stateClass = "state-paused";
 
+  // Phase badge
+  let phaseBadge = "";
+  if (timer.phase === "stopwatch") phaseBadge = "GOAL REACHED";
+  else if (timer.goalReached && !isOpenEnded) phaseBadge = "COMPLETED";
+  else if (timer.isRunning) phaseBadge = "COUNTDOWN";
+  else if (timer.remaining < totalSeconds) phaseBadge = "PAUSED";
+
   // Status label
   let statusLabel = "";
   if (timer.phase === "stopwatch") {
-    statusLabel = `Goal reached! Extra time: ${formatTime(timer.stopwatchTime, useHours)}`;
+    statusLabel = `✓ Goal reached! Extra: ${formatTime(timer.stopwatchTime, useHours)}`;
   } else if (timer.goalReached && !isOpenEnded) {
     statusLabel = "✓ Completed!";
   } else if (timer.isRunning) {
@@ -274,9 +348,10 @@ function TimerDisplay({ habit, totalSeconds, label, isOpenEnded }) {
 
   return (
     <div className={`atp-timer ${stateClass}`}>
-      {/* Habit name */}
+      {/* Habit name + badges */}
       <div className="atp-habit-name">
         {isOpenEnded && <span className="atp-open-badge">OPEN</span>}
+        {phaseBadge && <span className={`atp-phase-badge ${stateClass}`}>{phaseBadge}</span>}
         <span>{habit.name}</span>
       </div>
 
@@ -297,7 +372,6 @@ function TimerDisplay({ habit, totalSeconds, label, isOpenEnded }) {
               strokeDashoffset={ringOffset}
               strokeLinecap="round"
             />
-            {/* Stopwatch overlay ring */}
             {timer.phase === "stopwatch" && (
               <circle
                 className="atp-ring-extra"
@@ -359,7 +433,7 @@ function TimerDisplay({ habit, totalSeconds, label, isOpenEnded }) {
         )}
       </div>
 
-      {/* Goal reached flash */}
+      {/* Goal reached floating badge */}
       {timer.goalReached && timer.phase === "stopwatch" && (
         <div className="atp-goal-badge">
           <span>🎯 Goal Reached!</span>

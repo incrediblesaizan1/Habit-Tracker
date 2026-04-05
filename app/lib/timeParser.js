@@ -1,67 +1,35 @@
 /**
- * Smart Time Parser v2
- * Extracts time durations from habit names/descriptions.
+ * Smart Time Parser v3
+ * Uses the user's suggested consolidated regex approach.
  *
  * Supported patterns:
- *   Hours  → "1 hour fitness", "2hr study", "1.5 hours reading"
- *   Minutes → "10 min walk", "30-minute meditation", "20 mins journaling"
- *   Seconds → "90 second plank", "45sec rest"
- *
- * Open-ended patterns:
- *   "6+ hour study"       → 6 hours, isOpenEnded: true
- *   "2-3 hour workout"    → 2 hours (lower bound), isOpenEnded: true
- *   "at least 1hr reading"→ 1 hour, isOpenEnded: true
- *   "30+ min walk"        → 30 minutes, isOpenEnded: true
+ *   "6+ Hour Study"     → 6 hours, isOpenEnded: true
+ *   "2-3 hour workout"  → 2 hours (lower bound), isOpenEnded: true
+ *   "30+ min walk"      → 30 minutes, isOpenEnded: true
+ *   "10 min walk"       → 10 minutes, fixed
+ *   "1 hour fitness"    → 1 hour, fixed
+ *   "1.5hr reading"     → 90 minutes, fixed
+ *   "90 second plank"   → 90 seconds, fixed
+ *   "45sec rest"        → 45 seconds, fixed
+ *   "at least 1hr"      → 1 hour, isOpenEnded: true
  *
  * Returns { detected, totalSeconds, label, isOpenEnded } or { detected: false }
  */
 
-const UNIT_DEFS = [
-  { regex: /hours?|hrs?/i, unit: "hours", toSeconds: (v) => v * 3600 },
-  { regex: /minutes?|mins?/i, unit: "minutes", toSeconds: (v) => v * 60 },
-  { regex: /seconds?|secs?/i, unit: "seconds", toSeconds: (v) => v },
-];
+// Consolidated regex: captures number, optional +, optional range upper bound, and unit
+// Groups: (1) number, (2) optional "+", (3) optional upper-bound number, (4) unit
+const TIME_REGEX = /(\d+\.?\d*)\s*(\+)?\s*(?:[-–]\s*(\d+\.?\d*)\s*)?(?:[-–]?\s*)(hours?|hrs?|h|minutes?|mins?|m(?!o)|seconds?|secs?|s)\b/i;
 
-// Build pattern list — order matters (check most specific first)
-function buildPatterns() {
-  const patterns = [];
+// "at least" prefix pattern
+const AT_LEAST_REGEX = /at\s+least\s+(\d+\.?\d*)\s*[-–]?\s*(hours?|hrs?|h|minutes?|mins?|m(?!o)|seconds?|secs?|s)\b/i;
 
-  for (const u of UNIT_DEFS) {
-    const unitStr = u.regex.source;
-
-    // Range pattern: "2-3 hour", "2–3 hours" (uses lower bound, open-ended)
-    patterns.push({
-      regex: new RegExp(`(\\d+(?:\\.\\d+)?)\\s*[-–]\\s*\\d+(?:\\.\\d+)?\\s*[-–]?\\s*(?:${unitStr})\\b`, "i"),
-      ...u,
-      openEnded: true,
-    });
-
-    // Open-ended with "+": "6+ hour", "30+ min"
-    patterns.push({
-      regex: new RegExp(`(\\d+(?:\\.\\d+)?)\\s*\\+\\s*[-–]?\\s*(?:${unitStr})\\b`, "i"),
-      ...u,
-      openEnded: true,
-    });
-
-    // "at least" prefix: "at least 1hr", "at least 30 minutes"
-    patterns.push({
-      regex: new RegExp(`at\\s+least\\s+(\\d+(?:\\.\\d+)?)\\s*[-–]?\\s*(?:${unitStr})\\b`, "i"),
-      ...u,
-      openEnded: true,
-    });
-
-    // Standard pattern: "1 hour", "30-minute", "45sec"
-    patterns.push({
-      regex: new RegExp(`(\\d+(?:\\.\\d+)?)\\s*[-–]?\\s*(?:${unitStr})\\b`, "i"),
-      ...u,
-      openEnded: false,
-    });
-  }
-
-  return patterns;
+function unitToSeconds(value, unit) {
+  const u = unit.toLowerCase();
+  if (/^(h|hr|hrs|hour|hours)$/.test(u)) return value * 3600;
+  if (/^(m|min|mins|minute|minutes)$/.test(u)) return value * 60;
+  if (/^(s|sec|secs|second|seconds)$/.test(u)) return value;
+  return 0;
 }
-
-const TIME_PATTERNS = buildPatterns();
 
 /**
  * Parse a habit name/description for time duration.
@@ -73,30 +41,50 @@ export function parseTimeDuration(text) {
     return { detected: false };
   }
 
-  for (const pattern of TIME_PATTERNS) {
-    const match = text.match(pattern.regex);
-    if (match) {
-      const numericValue = parseFloat(match[1]);
-
-      // Edge case: zero or negative values → ignore
-      if (numericValue <= 0 || !isFinite(numericValue)) {
-        continue;
+  // Check "at least" pattern first
+  const atLeastMatch = text.match(AT_LEAST_REGEX);
+  if (atLeastMatch) {
+    const value = parseFloat(atLeastMatch[1]);
+    if (value > 0 && isFinite(value)) {
+      const totalSeconds = Math.round(unitToSeconds(value, atLeastMatch[2]));
+      if (totalSeconds > 0 && totalSeconds <= 86400) {
+        return {
+          detected: true,
+          totalSeconds,
+          label: formatDurationLabel(totalSeconds),
+          isOpenEnded: true,
+        };
       }
-
-      const totalSeconds = Math.round(pattern.toSeconds(numericValue));
-
-      // Sanity: cap at 24 hours (86400 seconds)
-      if (totalSeconds > 86400) {
-        continue;
-      }
-
-      return {
-        detected: true,
-        totalSeconds,
-        label: formatDurationLabel(totalSeconds),
-        isOpenEnded: pattern.openEnded,
-      };
     }
+  }
+
+  // Main time regex
+  const match = text.match(TIME_REGEX);
+  if (match) {
+    const value = parseFloat(match[1]);
+    const hasPlus = !!match[2]; // "+" present
+    const hasRange = !!match[3]; // upper bound present (e.g. "2-3")
+    const unit = match[4];
+
+    if (value <= 0 || !isFinite(value)) {
+      return { detected: false };
+    }
+
+    const totalSeconds = Math.round(unitToSeconds(value, unit));
+
+    // Sanity: must be > 0 and <= 24 hours
+    if (totalSeconds <= 0 || totalSeconds > 86400) {
+      return { detected: false };
+    }
+
+    const isOpenEnded = hasPlus || hasRange;
+
+    return {
+      detected: true,
+      totalSeconds,
+      label: formatDurationLabel(totalSeconds),
+      isOpenEnded,
+    };
   }
 
   return { detected: false };

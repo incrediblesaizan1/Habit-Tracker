@@ -47,6 +47,7 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
 
   // ─── ResizeObserver: determine timer panel placement ───
+  // centerRef = habit tracker card, rightRef = GoalsAndSacrifices wrapper ONLY (not the timer)
   const centerRef = useRef(null);
   const rightRef = useRef(null);
   const [timerPlacement, setTimerPlacement] = useState("right"); // "right" | "full"
@@ -56,12 +57,16 @@ export default function Home() {
     const rightEl = rightRef.current;
     if (!centerEl || !rightEl) return;
 
-    const observer = new ResizeObserver(() => {
-      const centerH = centerEl.getBoundingClientRect().height;
-      const rightH = rightEl.getBoundingClientRect().height;
-      setTimerPlacement(rightH < centerH ? "right" : "full");
-    });
+    const evaluate = () => {
+      const trackerHeight = centerEl.getBoundingClientRect().height;
+      const rightContentHeight = rightEl.getBoundingClientRect().height;
+      const availableSpace = trackerHeight - rightContentHeight;
+      // If >= 180px available below Goal Setup → place timer in right column
+      // Otherwise → render as full-width bar below the tracker
+      setTimerPlacement(availableSpace >= 180 ? "right" : "full");
+    };
 
+    const observer = new ResizeObserver(evaluate);
     observer.observe(centerEl);
     observer.observe(rightEl);
     return () => observer.disconnect();
