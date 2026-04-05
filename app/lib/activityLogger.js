@@ -1,12 +1,23 @@
-import { db } from "./firebase";
-import { collection, doc, setDoc } from "firebase/firestore";
+/**
+ * Activity Logger — localStorage-based history tracking
+ *
+ * Two stores:
+ *   1. timerHistory — completed/stopped timer sessions
+ *   2. activityLog  — all habit-related actions
+ */
 
-const MAX_ENTRIES = 500; // Not actively used to truncate Firestore in this basic version, but can be via Functions/scheduled cleanup.
+const TIMER_HISTORY_KEY = "sk_timerHistory";
+const ACTIVITY_LOG_KEY = "sk_activityLog";
+const MAX_ENTRIES = 500;
 
 // ─── Timer History ───
 
-export async function logTimerEvent({
-  uid,
+/**
+ * Log a timer session.
+ * @param {{ habitName, targetDuration, actualTime, status, isOpenEnded, extraTime }} entry
+ *   status: "completed" | "partial" | "exceeded"
+ */
+export function logTimerEvent({
   habitName,
   targetDuration,
   actualTime,
@@ -14,12 +25,10 @@ export async function logTimerEvent({
   isOpenEnded = false,
   extraTime = 0,
 }) {
-  if (!uid) return;
   try {
-    const historyId = `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const docRef = doc(collection(db, "users", uid, "timerHistory"), historyId);
-    await setDoc(docRef, {
-      id: historyId,
+    const history = getTimerHistory();
+    history.unshift({
+      id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       habitName,
       targetDuration,
       actualTime,
@@ -27,35 +36,82 @@ export async function logTimerEvent({
       isOpenEnded,
       extraTime,
       timestamp: new Date().toISOString(),
-      createdAt: Date.now(),
     });
-  } catch (err) {
-    console.error("Failed to log timer event to Firestore", err);
+    // Cap history size
+    if (history.length > MAX_ENTRIES) history.length = MAX_ENTRIES;
+    localStorage.setItem(TIMER_HISTORY_KEY, JSON.stringify(history));
+  } catch {
+    // Storage full or unavailable
+  }
+}
+
+/**
+ * Get all timer history entries (newest first).
+ */
+export function getTimerHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(TIMER_HISTORY_KEY)) || [];
+  } catch {
+    return [];
   }
 }
 
 // ─── Activity Log ───
 
-export async function logActivity({ uid, action, habitName, detail = "" }) {
-  if (!uid) return;
+/**
+ * Log a general activity.
+ * @param {{ action, habitName, detail? }} entry
+ *   action: "habit_checked" | "habit_unchecked" | "habit_created" | "habit_deleted"
+ *           | "timer_started" | "timer_paused" | "timer_reset" | "timer_completed"
+ *           | "timer_goal_reached" | "timer_stopped"
+ */
+export function logActivity({ action, habitName, detail = "" }) {
   try {
-    const logId = `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const docRef = doc(collection(db, "users", uid, "activityLog"), logId);
-    await setDoc(docRef, {
-      id: logId,
+    const log = getActivityLog();
+    log.unshift({
+      id: `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       action,
       habitName,
       detail,
       timestamp: new Date().toISOString(),
-      createdAt: Date.now(),
     });
-  } catch (err) {
-    console.error("Failed to log activity to Firestore", err);
+    if (log.length > MAX_ENTRIES) log.length = MAX_ENTRIES;
+    localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(log));
+  } catch {
+    // Storage full or unavailable
+  }
+}
+
+/**
+ * Get all activity log entries (newest first).
+ */
+export function getActivityLog() {
+  try {
+    return JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY)) || [];
+  } catch {
+    return [];
   }
 }
 
 // ─── Clear ───
-// Clearing logic omitted for simplicity. In production it requires batch deleting collections.
+
+export function clearTimerHistory() {
+  try {
+    localStorage.removeItem(TIMER_HISTORY_KEY);
+  } catch {
+    // Ignore
+  }
+}
+
+export function clearActivityLog() {
+  try {
+    localStorage.removeItem(ACTIVITY_LOG_KEY);
+  } catch {
+    // Ignore
+  }
+}
+
 export function clearAllHistory() {
-  console.warn("Client-side bulk deletion requires batched writes. Not implemented here.");
+  clearTimerHistory();
+  clearActivityLog();
 }
