@@ -2072,11 +2072,51 @@ body {
 }
 .history-status-badge {
   display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 3px 10px;
   border-radius: 12px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.3px;
+}
+.history-status-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+.history-status-pct {
+  font-size: 9px;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+/* Progress bar inside Actual column */
+.history-actual-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.history-progress-bar {
+  width: 100%;
+  max-width: 80px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.history-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  min-width: 1px;
+}
+
+/* Missed / incomplete row highlight */
+.history-row-missed {
+  background: rgba(239, 68, 68, 0.03);
+}
+.history-row-missed:hover {
+  background: rgba(239, 68, 68, 0.06) !important;
 }
 
 /* Activity Log */

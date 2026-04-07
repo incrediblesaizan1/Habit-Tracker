@@ -352,6 +352,26 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
   }, [computeElapsed, phase, stopwatchTime, isRunning, startedAt, totalSeconds, goalReached, habitName, habitId]);
 
   const reset = useCallback(() => {
+    // Log history for any time that was actually spent before resetting
+    const elapsed = computeElapsed();
+    if (elapsed > 0) {
+      const actualTime = phase === "countdown"
+        ? Math.min(elapsed, totalSeconds)
+        : totalSeconds + (stopwatchTime + (startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0));
+
+      let status = "incomplete";
+      const swTime = phase === "stopwatch"
+        ? stopwatchTime + (startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0)
+        : 0;
+      if (goalReached && swTime > 0) status = "exceeded";
+      else if (goalReached) status = "completed";
+
+      logTimerEvent({
+        habitName, targetDuration: totalSeconds, actualTime: Math.round(actualTime),
+        status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
+      });
+    }
+
     setIsRunning(false);
     setPhase("countdown");
     setStartedAt(0);
@@ -366,7 +386,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
 
     // Delete from server
     deleteServerTimerState(habitId);
-  }, [totalSeconds, habitName, habitId]);
+  }, [computeElapsed, phase, totalSeconds, stopwatchTime, startedAt, goalReached, isOpenEnded, habitName, habitId]);
 
   const stop = useCallback(() => {
     const elapsed = computeElapsed();
@@ -448,6 +468,10 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
         if (timerDate && timerDate !== today) {
           const wasCompleted = serverState.goalReached === true;
 
+          // Calculate actual time spent for this timer session
+          const serverElapsed = serverState.elapsedBeforePause || 0;
+          const serverTotalSec = serverState.totalSeconds || info.totalSeconds || 0;
+
           if (!wasCompleted) {
             // Timer was started/running on a previous day but NOT completed → mark as crossed
             // Parse the timerDate to get the day number
@@ -463,6 +487,18 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
                     habitName: h.name,
                     detail: `Auto-crossed for ${timerDate} (timer incomplete)`,
                   });
+
+                  // Log timer history so the actual time spent is recorded
+                  if (serverElapsed > 0) {
+                    logTimerEvent({
+                      habitName: h.name,
+                      targetDuration: serverTotalSec,
+                      actualTime: Math.round(Math.min(serverElapsed, serverTotalSec)),
+                      status: "crossed",
+                      isOpenEnded: info.isOpenEnded || false,
+                      extraTime: 0,
+                    });
+                  }
                 }
               }
             }

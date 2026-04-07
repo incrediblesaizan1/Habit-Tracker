@@ -26,9 +26,11 @@ const ACTION_LABELS = {
 };
 
 const STATUS_STYLES = {
-  completed: { label: "Completed", color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
-  partial: { label: "Partial", color: "#f97316", bg: "rgba(249,115,22,0.1)" },
-  exceeded: { label: "Exceeded", color: "#14b8a6", bg: "rgba(20,184,166,0.1)" },
+  completed: { label: "Completed", color: "#22c55e", bg: "rgba(34,197,94,0.1)", icon: "✓" },
+  partial: { label: "Partial", color: "#f97316", bg: "rgba(249,115,22,0.1)", icon: "◐" },
+  exceeded: { label: "Exceeded", color: "#14b8a6", bg: "rgba(20,184,166,0.1)", icon: "🔥" },
+  crossed: { label: "Crossed", color: "#ef4444", bg: "rgba(239,68,68,0.1)", icon: "✕" },
+  incomplete: { label: "Incomplete", color: "#eab308", bg: "rgba(234,179,8,0.1)", icon: "○" },
 };
 
 function formatDate(iso) {
@@ -238,8 +240,11 @@ export default function HistoryPage() {
                     <tbody>
                       {sortedTimerHistory.map((entry) => {
                         const st = STATUS_STYLES[entry.status] || STATUS_STYLES.partial;
+                        const pct = entry.targetDuration > 0
+                          ? Math.min(100, Math.round((entry.actualTime / entry.targetDuration) * 100))
+                          : 100;
                         return (
-                          <tr key={entry.id}>
+                          <tr key={entry.id} className={entry.status === "crossed" || entry.status === "incomplete" ? "history-row-missed" : ""}>
                             <td className="history-cell-habit">
                               <span className="history-habit-name">{entry.habitName}</span>
                               {entry.isOpenEnded && (
@@ -248,12 +253,25 @@ export default function HistoryPage() {
                             </td>
                             <td>{formatSeconds(entry.targetDuration)}</td>
                             <td>
-                              {formatSeconds(entry.actualTime)}
-                              {entry.extraTime > 0 && (
-                                <span className="history-extra">
-                                  +{formatSeconds(entry.extraTime)}
-                                </span>
-                              )}
+                              <div className="history-actual-cell">
+                                <span>{formatSeconds(entry.actualTime)}</span>
+                                {entry.extraTime > 0 && (
+                                  <span className="history-extra">
+                                    +{formatSeconds(entry.extraTime)}
+                                  </span>
+                                )}
+                                {entry.targetDuration > 0 && (
+                                  <div className="history-progress-bar">
+                                    <div
+                                      className="history-progress-fill"
+                                      style={{
+                                        width: `${pct}%`,
+                                        background: st.color,
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             <td className="history-cell-date">
                               {formatDateTime(entry.timestamp)}
@@ -263,7 +281,11 @@ export default function HistoryPage() {
                                 className="history-status-badge"
                                 style={{ color: st.color, background: st.bg }}
                               >
+                                <span className="history-status-icon">{st.icon}</span>
                                 {st.label}
+                                {entry.targetDuration > 0 && (
+                                  <span className="history-status-pct"> {pct}%</span>
+                                )}
                               </span>
                             </td>
                           </tr>
