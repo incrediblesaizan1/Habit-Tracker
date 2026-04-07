@@ -5,17 +5,23 @@ import { parseTimeDuration } from "../lib/timeParser";
 import { logTimerEvent, logActivity } from "../lib/activityLogger";
 
 // ─── Constants ───
-const TIMER_STATE_KEY = "sk_timerStates";
 const MODAL_STATE_KEY = "sk_timerModal";
-const MIDNIGHT_CHECK_KEY = "sk_lastMidnightCheck";
-const COMPLETION_LOG_KEY = "sk_timerCompletions";
 const CUSTOM_TIMERS_KEY = "sk_customTimers";
+const SYNC_INTERVAL_MS = 30000; // 30 seconds polling
+
+/**
+ * Get today's date string in YYYY-MM-DD format.
+ */
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 /**
  * Format total seconds into display string.
  */
 function formatTime(seconds, useHours = false) {
-  const abs = Math.abs(seconds);
+  const abs = Math.abs(Math.floor(seconds));
   const h = Math.floor(abs / 3600);
   const m = Math.floor((abs % 3600) / 60);
   const s = abs % 60;
@@ -59,31 +65,46 @@ function sendNotification(title, body) {
   }
 }
 
-// ─── Persistence helpers ───
-function loadTimerStates() {
-  try { return JSON.parse(localStorage.getItem(TIMER_STATE_KEY)) || {}; }
-  catch { return {}; }
-}
-function saveTimerState(habitId, state) {
+// ─── Server sync helpers ───
+async function fetchServerTimerStates() {
   try {
-    const all = loadTimerStates();
-    all[habitId] = { ...state, savedAt: Date.now() };
-    localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(all));
-  } catch { /* storage full */ }
-}
-function clearTimerState(habitId) {
-  try {
-    const all = loadTimerStates();
-    delete all[habitId];
-    localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(all));
+    const res = await fetch("/api/timer-state");
+    if (res.ok) return await res.json();
   } catch { /* ignore */ }
-}
-function getSavedTimerState(habitId) {
-  const all = loadTimerStates();
-  return all[habitId] || null;
+  return {};
 }
 
-// ─── Modal state persistence ───
+async function saveServerTimerState(habitId, state) {
+  try {
+    await fetch("/api/timer-state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ habitId, ...state }),
+    });
+  } catch { /* ignore */ }
+}
+
+async function deleteServerTimerState(habitId) {
+  try {
+    await fetch("/api/timer-state", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ habitId }),
+    });
+  } catch { /* ignore */ }
+}
+
+async function deleteServerTimerStates(habitIds) {
+  try {
+    await fetch("/api/timer-state", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ habitIds }),
+    });
+  } catch { /* ignore */ }
+}
+
+// ─── Modal state persistence (local only — UI preference) ───
 function saveModalState(state) {
   try { localStorage.setItem(MODAL_STATE_KEY, JSON.stringify(state)); }
   catch { /* ignore */ }
@@ -97,7 +118,7 @@ function clearModalState() {
   catch { /* ignore */ }
 }
 
-// ─── Custom timers persistence ───
+// ─── Custom timers persistence (local only for now) ───
 function loadCustomTimers() {
   try { return JSON.parse(localStorage.getItem(CUSTOM_TIMERS_KEY)) || []; }
   catch { return []; }
@@ -107,221 +128,373 @@ function saveCustomTimers(timers) {
   catch { /* ignore */ }
 }
 
-// ─── Timer completion log for today ───
-function getTodayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function loadCompletionLog() {
-  try { return JSON.parse(localStorage.getItem(COMPLETION_LOG_KEY)) || {}; }
-  catch { return {}; }
-}
-function markTimerCompleted(habitId) {
-  try {
-    const log = loadCompletionLog();
-    const today = getTodayKey();
-    if (!log[today]) log[today] = {};
-    log[today][habitId] = true;
-    localStorage.setItem(COMPLETION_LOG_KEY, JSON.stringify(log));
-  } catch { /* ignore */ }
-}
-function wasTimerCompletedToday(habitId) {
-  try {
-    const log = loadCompletionLog();
-    return !!log[getTodayKey()]?.[habitId];
-  } catch { return false; }
-}
-function wasTimerStartedToday(habitId) {
-  const saved = getSavedTimerState(habitId);
-  if (!saved) return false;
-  if (saved.savedAt) {
-    const savedDate = new Date(saved.savedAt);
-    const today = new Date();
-    return savedDate.toDateString() === today.toDateString();
-  }
-  return false;
-}
+// ═══════════════════════════════════════════════════════════════════
+// ─── Timestamp-based Timer Hook (server-synced, tab-throttle-proof) ──
+// ═══════════════════════════════════════════════════════════════════
+function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete, serverStates) {
+  // Compute initial state from server snapshot
+  const serverSnapshot = serverStates?.[habitId] || null;
 
-// ─── Individual Timer Logic (per-habit) with persistence ───
-function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete) {
-  const savedState = useRef(getSavedTimerState(habitId));
-  const initialState = useMemo(() => {
-    const saved = savedState.current;
-    if (!saved) return null;
-    if (saved.isRunning && saved.savedAt) {
-      const elapsedSinceSave = Math.floor((Date.now() - saved.savedAt) / 1000);
-      if (saved.phase === "countdown") {
-        const newRemaining = Math.max(0, saved.remaining - elapsedSinceSave);
-        if (newRemaining === 0 && isOpenEnded) {
-          const overflowTime = elapsedSinceSave - saved.remaining;
-          return {
-            remaining: 0, phase: "stopwatch",
-            stopwatchTime: (saved.stopwatchTime || 0) + overflowTime,
-            goalReached: true, isRunning: true,
-          };
-        } else if (newRemaining === 0 && !isOpenEnded) {
-          return {
-            remaining: 0, phase: "countdown", stopwatchTime: 0,
-            goalReached: true, isRunning: false,
-          };
-        }
-        return { ...saved, remaining: newRemaining };
-      } else {
-        return {
-          ...saved,
-          stopwatchTime: (saved.stopwatchTime || 0) + elapsedSinceSave,
-        };
-      }
+  const computeInitial = () => {
+    if (!serverSnapshot) {
+      return {
+        isRunning: false,
+        phase: "countdown",
+        startedAt: 0,
+        elapsedBeforePause: 0,
+        stopwatchTime: 0,
+        goalReached: false,
+      };
     }
-    return saved;
-  }, [totalSeconds, isOpenEnded]);
+    return {
+      isRunning: serverSnapshot.isRunning || false,
+      phase: serverSnapshot.phase || "countdown",
+      startedAt: serverSnapshot.startedAt || 0,
+      elapsedBeforePause: serverSnapshot.elapsedBeforePause || 0,
+      stopwatchTime: serverSnapshot.stopwatchTime || 0,
+      goalReached: serverSnapshot.goalReached || false,
+    };
+  };
 
-  const [remaining, setRemaining] = useState(initialState?.remaining ?? totalSeconds);
-  const [isRunning, setIsRunning] = useState(initialState?.isRunning ?? false);
-  const [phase, setPhase] = useState(initialState?.phase ?? "countdown");
-  const [stopwatchTime, setStopwatchTime] = useState(initialState?.stopwatchTime ?? 0);
-  const [goalReached, setGoalReached] = useState(initialState?.goalReached ?? false);
+  const initial = useRef(computeInitial());
+
+  const [isRunning, setIsRunning] = useState(initial.current.isRunning);
+  const [phase, setPhase] = useState(initial.current.phase);
+  const [startedAt, setStartedAt] = useState(initial.current.startedAt);
+  const [elapsedBeforePause, setElapsedBeforePause] = useState(initial.current.elapsedBeforePause);
+  const [stopwatchTime, setStopwatchTime] = useState(initial.current.stopwatchTime);
+  const [goalReached, setGoalReached] = useState(initial.current.goalReached);
   const [justCompleted, setJustCompleted] = useState(false);
-  const intervalRef = useRef(null);
+
+  // Display values computed from timestamps
+  const [displayRemaining, setDisplayRemaining] = useState(totalSeconds);
+  const [displayStopwatch, setDisplayStopwatch] = useState(0);
+
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const goalReachedRef = useRef(goalReached);
+  goalReachedRef.current = goalReached;
+  const completionFiredRef = useRef(false);
 
-  // Persist state whenever it changes
-  useEffect(() => {
-    saveTimerState(habitId, {
-      remaining, isRunning, phase, stopwatchTime, goalReached
-    });
-  }, [habitId, remaining, isRunning, phase, stopwatchTime, goalReached]);
-
-  // Timer tick
-  useEffect(() => {
-    if (!isRunning) return;
-    intervalRef.current = setInterval(() => {
-      if (phase === "countdown") {
-        setRemaining((prev) => {
-          if (prev <= 1) {
-            if (isOpenEnded) {
-              setPhase("stopwatch");
-              setGoalReached(true);
-              if (onCompleteRef.current) onCompleteRef.current(habitId, habitName);
-              logActivity({ action: "timer_goal_reached", habitName });
-              return 0;
-            } else {
-              clearInterval(intervalRef.current);
-              setIsRunning(false);
-              setGoalReached(true);
-              setJustCompleted(true);
-              playChime();
-              sendNotification("⏰ Timer Complete!", `${habitName} timer has finished!`);
-              if (onCompleteRef.current) onCompleteRef.current(habitId, habitName);
-              logActivity({ action: "timer_completed", habitName });
-              logTimerEvent({
-                habitName, targetDuration: totalSeconds,
-                actualTime: totalSeconds, status: "completed",
-                isOpenEnded: false, extraTime: 0,
-              });
-              setTimeout(() => setJustCompleted(false), 3000);
-              return 0;
-            }
-          }
-          return prev - 1;
-        });
-      } else {
-        setStopwatchTime((prev) => prev + 1);
-      }
-    }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isRunning, phase, isOpenEnded, habitName, totalSeconds, habitId]);
-
-  const start = useCallback(() => {
-    if (remaining === 0 && phase === "countdown" && !isOpenEnded) {
-      setRemaining(totalSeconds);
-      setGoalReached(false);
+  // ── Compute current elapsed seconds from timestamps ──
+  const computeElapsed = useCallback(() => {
+    let elapsed = elapsedBeforePause;
+    if (isRunning && startedAt > 0) {
+      elapsed += (Date.now() - startedAt) / 1000;
     }
+    return Math.max(0, elapsed);
+  }, [isRunning, startedAt, elapsedBeforePause]);
+
+  // ── Tick: update display values using wall clock ──
+  useEffect(() => {
+    const updateDisplay = () => {
+      const elapsed = computeElapsed();
+
+      if (phase === "countdown") {
+        const rem = Math.max(0, totalSeconds - elapsed);
+        setDisplayRemaining(Math.ceil(rem));
+
+        // Check for completion
+        if (rem <= 0 && !completionFiredRef.current) {
+          completionFiredRef.current = true;
+          if (isOpenEnded) {
+            // Transition to stopwatch
+            setPhase("stopwatch");
+            setGoalReached(true);
+            const overflowTime = Math.max(0, elapsed - totalSeconds);
+            setStopwatchTime(overflowTime);
+            setDisplayStopwatch(Math.floor(overflowTime));
+            if (onCompleteRef.current) onCompleteRef.current(habitId, habitName);
+            logActivity({ action: "timer_goal_reached", habitName });
+
+            // Save transition to server
+            const now = Date.now();
+            const state = {
+              remaining: 0, isRunning: true, phase: "stopwatch",
+              stopwatchTime: overflowTime, goalReached: true,
+              startedAt: now, elapsedBeforePause: 0,
+              totalSeconds, timerDate: getTodayKey(),
+            };
+            saveServerTimerState(habitId, state);
+          } else {
+            // Fixed duration complete
+            setIsRunning(false);
+            setGoalReached(true);
+            setJustCompleted(true);
+            setDisplayRemaining(0);
+            playChime();
+            sendNotification("⏰ Timer Complete!", `${habitName} timer has finished!`);
+            if (onCompleteRef.current) onCompleteRef.current(habitId, habitName);
+            logActivity({ action: "timer_completed", habitName });
+            logTimerEvent({
+              habitName, targetDuration: totalSeconds,
+              actualTime: totalSeconds, status: "completed",
+              isOpenEnded: false, extraTime: 0,
+            });
+
+            // Save completed state to server
+            const state = {
+              remaining: 0, isRunning: false, phase: "countdown",
+              stopwatchTime: 0, goalReached: true,
+              startedAt: 0, elapsedBeforePause: totalSeconds,
+              totalSeconds, timerDate: getTodayKey(),
+            };
+            saveServerTimerState(habitId, state);
+
+            setTimeout(() => setJustCompleted(false), 3000);
+          }
+        }
+      } else {
+        // Stopwatch phase
+        const baseStopwatch = stopwatchTime;
+        let swElapsed = baseStopwatch;
+        if (isRunning && startedAt > 0) {
+          swElapsed = baseStopwatch + (Date.now() - startedAt) / 1000;
+        }
+        setDisplayStopwatch(Math.floor(Math.max(0, swElapsed)));
+        setDisplayRemaining(0);
+      }
+    };
+
+    updateDisplay();
+
+    if (!isRunning) return;
+
+    // Use setInterval for regular updates, but compute from wall clock
+    const intervalId = setInterval(updateDisplay, 500); // 500ms for smooth updates
+    return () => clearInterval(intervalId);
+  }, [isRunning, phase, startedAt, elapsedBeforePause, stopwatchTime, totalSeconds, isOpenEnded, habitName, habitId, computeElapsed]);
+
+  // ── Sync from server when serverStates changes (polling update) ──
+  const lastSyncRef = useRef(null);
+  useEffect(() => {
+    if (!serverSnapshot) return;
+    // Avoid re-applying the same snapshot
+    const snapshotKey = JSON.stringify(serverSnapshot);
+    if (lastSyncRef.current === snapshotKey) return;
+    lastSyncRef.current = snapshotKey;
+
+    // Only sync if the server state is different from local
+    const serverRunning = serverSnapshot.isRunning || false;
+    const serverPhase = serverSnapshot.phase || "countdown";
+    const serverStartedAt = serverSnapshot.startedAt || 0;
+    const serverElapsed = serverSnapshot.elapsedBeforePause || 0;
+    const serverGoalReached = serverSnapshot.goalReached || false;
+    const serverStopwatch = serverSnapshot.stopwatchTime || 0;
+
+    // Update local state from server
+    setIsRunning(serverRunning);
+    setPhase(serverPhase);
+    setStartedAt(serverStartedAt);
+    setElapsedBeforePause(serverElapsed);
+    setGoalReached(serverGoalReached);
+    setStopwatchTime(serverStopwatch);
+    completionFiredRef.current = serverGoalReached;
+  }, [serverSnapshot]);
+
+  // ── Actions ──
+  const start = useCallback(() => {
+    const now = Date.now();
+    let newPhase = phase;
+    let newElapsed = elapsedBeforePause;
+    let newGoal = goalReached;
+
+    if (displayRemaining === 0 && phase === "countdown" && !isOpenEnded) {
+      // Restart after completion
+      newElapsed = 0;
+      newGoal = false;
+      completionFiredRef.current = false;
+    }
+
+    setStartedAt(now);
+    setElapsedBeforePause(newElapsed);
+    setGoalReached(newGoal);
     setIsRunning(true);
     logActivity({ action: "timer_started", habitName });
-  }, [remaining, phase, isOpenEnded, totalSeconds, habitName]);
+
+    // Save to server
+    saveServerTimerState(habitId, {
+      remaining: Math.max(0, totalSeconds - newElapsed),
+      isRunning: true, phase: newPhase,
+      stopwatchTime: stopwatchTime, goalReached: newGoal,
+      startedAt: now, elapsedBeforePause: newElapsed,
+      totalSeconds, timerDate: getTodayKey(),
+    });
+  }, [phase, elapsedBeforePause, goalReached, displayRemaining, isOpenEnded, stopwatchTime, totalSeconds, habitName, habitId]);
 
   const pause = useCallback(() => {
+    // Accumulate elapsed time from the current running segment
+    const elapsed = computeElapsed();
+    const now = Date.now();
+
+    if (phase === "stopwatch") {
+      const swElapsed = stopwatchTime + (isRunning && startedAt > 0 ? (now - startedAt) / 1000 : 0);
+      setStopwatchTime(Math.max(0, swElapsed));
+    }
+
+    setElapsedBeforePause(elapsed);
+    setStartedAt(0);
     setIsRunning(false);
     logActivity({ action: "timer_paused", habitName });
-  }, [habitName]);
+
+    // Save to server
+    const remaining = phase === "countdown" ? Math.max(0, totalSeconds - elapsed) : 0;
+    const swTime = phase === "stopwatch"
+      ? stopwatchTime + (isRunning && startedAt > 0 ? (now - startedAt) / 1000 : 0)
+      : 0;
+
+    saveServerTimerState(habitId, {
+      remaining, isRunning: false, phase,
+      stopwatchTime: Math.max(0, swTime), goalReached,
+      startedAt: 0, elapsedBeforePause: elapsed,
+      totalSeconds, timerDate: getTodayKey(),
+    });
+  }, [computeElapsed, phase, stopwatchTime, isRunning, startedAt, totalSeconds, goalReached, habitName, habitId]);
 
   const reset = useCallback(() => {
     setIsRunning(false);
-    setRemaining(totalSeconds);
     setPhase("countdown");
+    setStartedAt(0);
+    setElapsedBeforePause(0);
     setStopwatchTime(0);
     setGoalReached(false);
     setJustCompleted(false);
-    clearTimerState(habitId);
+    setDisplayRemaining(totalSeconds);
+    setDisplayStopwatch(0);
+    completionFiredRef.current = false;
     logActivity({ action: "timer_reset", habitName });
+
+    // Delete from server
+    deleteServerTimerState(habitId);
   }, [totalSeconds, habitName, habitId]);
 
   const stop = useCallback(() => {
+    const elapsed = computeElapsed();
     setIsRunning(false);
-    const actualTime = totalSeconds - remaining + stopwatchTime;
+
+    const actualTime = phase === "countdown"
+      ? Math.min(elapsed, totalSeconds)
+      : totalSeconds + (stopwatchTime + (startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0));
+
     let status = "partial";
-    if (goalReached && stopwatchTime > 0) status = "exceeded";
+    const swTime = phase === "stopwatch"
+      ? stopwatchTime + (startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0)
+      : 0;
+    if (goalReached && swTime > 0) status = "exceeded";
     else if (goalReached) status = "completed";
+
     logTimerEvent({
-      habitName, targetDuration: totalSeconds, actualTime,
-      status, isOpenEnded, extraTime: stopwatchTime,
+      habitName, targetDuration: totalSeconds, actualTime: Math.round(actualTime),
+      status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
     });
     logActivity({ action: "timer_stopped", habitName });
-    setRemaining(totalSeconds);
+
     setPhase("countdown");
+    setStartedAt(0);
+    setElapsedBeforePause(0);
     setStopwatchTime(0);
     setGoalReached(false);
     setJustCompleted(false);
-    clearTimerState(habitId);
-  }, [totalSeconds, remaining, stopwatchTime, goalReached, isOpenEnded, habitName, habitId]);
+    setDisplayRemaining(totalSeconds);
+    setDisplayStopwatch(0);
+    completionFiredRef.current = false;
+
+    // Delete from server
+    deleteServerTimerState(habitId);
+  }, [computeElapsed, phase, totalSeconds, stopwatchTime, startedAt, goalReached, isOpenEnded, habitName, habitId]);
 
   const progress = totalSeconds > 0
-    ? Math.min(100, ((totalSeconds - remaining) / totalSeconds) * 100) : 0;
+    ? Math.min(100, ((totalSeconds - displayRemaining) / totalSeconds) * 100) : 0;
 
   return {
-    remaining, isRunning, phase, stopwatchTime, goalReached, justCompleted,
-    progress, start, pause, reset, stop,
+    remaining: displayRemaining,
+    isRunning,
+    phase,
+    stopwatchTime: displayStopwatch,
+    goalReached,
+    justCompleted,
+    progress,
+    start,
+    pause,
+    reset,
+    stop,
   };
 }
 
-// ─── Midnight Auto-Cross Hook ───
-function useMidnightCheck(habits, setDayStatus, isDayCompleted) {
+// ═══════════════════════════════════════════════════════════════════
+// ─── Midnight Auto-Cross Hook (Server-backed) ──────────────────
+// ═══════════════════════════════════════════════════════════════════
+function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
+  const hasRunRef = useRef(false);
+
   useEffect(() => {
-    if (!habits || !setDayStatus || !isDayCompleted) return;
+    if (!habits || !setDayStatus || !serverStates || hasRunRef.current) return;
+
+    const today = getTodayKey();
 
     const runCheck = () => {
+      const staleHabitIds = [];
+
       habits.forEach((h) => {
         const info = parseTimeDuration(h.name);
         if (!info.detected) return;
-        if (wasTimerStartedToday(h.id) && !wasTimerCompletedToday(h.id)) {
-          const saved = getSavedTimerState(h.id);
-          if (saved && saved.isRunning) {
-            clearTimerState(h.id);
+
+        const serverState = serverStates[h.id];
+        if (!serverState) return;
+
+        const timerDate = serverState.timerDate || "";
+
+        // If the timer belongs to a previous day (not today)
+        if (timerDate && timerDate !== today) {
+          const wasCompleted = serverState.goalReached === true;
+
+          if (!wasCompleted) {
+            // Timer was started/running on a previous day but NOT completed → mark as crossed
+            // Parse the timerDate to get the day number
+            const parts = timerDate.split("-");
+            if (parts.length === 3) {
+              const timerDay = parseInt(parts[2], 10);
+              if (timerDay > 0) {
+                // Only cross if not already completed for that day
+                if (!isDayCompleted || !isDayCompleted(h.id, timerDay)) {
+                  setDayStatus(h.id, timerDay, "crossed");
+                  logActivity({
+                    action: "timer_auto_crossed",
+                    habitName: h.name,
+                    detail: `Auto-crossed for ${timerDate} (timer incomplete)`,
+                  });
+                }
+              }
+            }
           }
+
+          // Reset the timer state for the new day regardless
+          staleHabitIds.push(h.id);
         }
       });
+
+      // Bulk delete stale timer states from server
+      if (staleHabitIds.length > 0) {
+        deleteServerTimerStates(staleHabitIds);
+      }
+
+      hasRunRef.current = true;
     };
 
-    const lastCheck = localStorage.getItem(MIDNIGHT_CHECK_KEY);
-    const today = getTodayKey();
-    if (lastCheck && lastCheck !== today) {
-      runCheck();
-    }
-    localStorage.setItem(MIDNIGHT_CHECK_KEY, today);
+    runCheck();
 
+    // Schedule next check at midnight
     const now = new Date();
     const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
     const msUntilMidnight = nextMidnight.getTime() - now.getTime();
 
     const timer = setTimeout(() => {
+      hasRunRef.current = false; // allow re-run after midnight
       runCheck();
-      localStorage.setItem(MIDNIGHT_CHECK_KEY, getTodayKey());
     }, msUntilMidnight);
 
     return () => clearTimeout(timer);
-  }, [habits, setDayStatus, isDayCompleted]);
+  }, [habits, setDayStatus, isDayCompleted, serverStates]);
 }
 
 
@@ -331,10 +504,47 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted) {
 export default function ActiveTimerPanel({ habits, placement = "full", setDayStatus, isDayCompleted }) {
   const [customTimers, setCustomTimers] = useState([]);
   const [showAddTimer, setShowAddTimer] = useState(false);
+  const [serverStates, setServerStates] = useState(null);
+  const [serverLoaded, setServerLoaded] = useState(false);
 
   // Load custom timers on mount
   useEffect(() => {
     setCustomTimers(loadCustomTimers());
+  }, []);
+
+  // ── Fetch server timer states on mount ──
+  useEffect(() => {
+    fetchServerTimerStates().then((states) => {
+      setServerStates(states);
+      setServerLoaded(true);
+    });
+  }, []);
+
+  // ── Poll server every 30s for cross-device sync ──
+  useEffect(() => {
+    if (!serverLoaded) return;
+
+    const intervalId = setInterval(() => {
+      fetchServerTimerStates().then((states) => {
+        setServerStates(states);
+      });
+    }, SYNC_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [serverLoaded]);
+
+  // ── Re-fetch on tab visibility change (user switches back to this tab) ──
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchServerTimerStates().then((states) => {
+          setServerStates(states);
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
   const timedHabits = useMemo(() => {
@@ -366,15 +576,16 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
   const [modalOpen, setModalOpen] = useState(false);
   const [modalHabitId, setModalHabitId] = useState(null);
 
-  // Midnight auto-cross
-  useMidnightCheck(habits, setDayStatus, isDayCompleted);
+  // Midnight auto-cross (uses server states)
+  useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates);
 
   // Restore modal state on mount
   useEffect(() => {
+    if (!serverLoaded || !serverStates) return;
     const saved = loadModalState();
     if (saved && saved.isOpen && saved.habitId) {
-      const timerState = getSavedTimerState(saved.habitId);
-      if (timerState && (timerState.isRunning || timerState.remaining < (saved.totalSeconds || Infinity))) {
+      const timerState = serverStates[saved.habitId];
+      if (timerState && (timerState.isRunning || timerState.elapsedBeforePause > 0)) {
         setModalOpen(true);
         setModalHabitId(saved.habitId);
         const idx = timedHabits.findIndex(h => h.id === saved.habitId);
@@ -383,7 +594,7 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
         clearModalState();
       }
     }
-  }, [timedHabits]);
+  }, [serverLoaded, serverStates, timedHabits]);
 
   useEffect(() => {
     if (activeIndex >= timedHabits.length) {
@@ -397,7 +608,6 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
     const today = new Date().getDate();
     if (isDayCompleted && isDayCompleted(habitId, today)) return;
     setDayStatus(habitId, today, "completed");
-    markTimerCompleted(habitId);
   }, [setDayStatus, isDayCompleted]);
 
   // Minimize modal (does NOT stop timer)
@@ -415,12 +625,12 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
 
   // Add custom timer
   const handleAddCustomTimer = useCallback((name, hours, minutes, seconds, isOpenEnded) => {
-    const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-    if (totalSeconds <= 0) return;
+    const totalSecs = (hours * 3600) + (minutes * 60) + seconds;
+    if (totalSecs <= 0) return;
     const newTimer = {
       id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       name,
-      totalSeconds,
+      totalSeconds: totalSecs,
       isOpenEnded,
     };
     const updated = [...customTimers, newTimer];
@@ -434,8 +644,16 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
     const updated = customTimers.filter(t => t.id !== timerId);
     setCustomTimers(updated);
     saveCustomTimers(updated);
-    clearTimerState(timerId);
+    deleteServerTimerState(timerId);
   }, [customTimers]);
+
+  if (!serverLoaded) {
+    return (
+      <div className={`active-timer-bar timer-placement-${placement}`} style={{ justifyContent: "center", minHeight: "60px" }}>
+        <span style={{ color: "var(--text-muted)", fontSize: 13 }}>Loading timers…</span>
+      </div>
+    );
+  }
 
   if (timedHabits.length === 0 && !showAddTimer) {
     // Show only a plus button when there are no timers
@@ -500,6 +718,7 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
             onMinimize={handleMinimize}
             isCustom={activeHabit.isCustom}
             onRemoveCustom={() => handleRemoveCustomTimer(activeHabit.id)}
+            serverStates={serverStates}
           />
         )}
 
@@ -530,9 +749,10 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
 // ═══════════════════════════════════════════
 function TimerWithSharedState({
   habit, totalSeconds, label, isOpenEnded, singleHabit,
-  onComplete, modalOpen, onModalOpen, onMinimize, isCustom, onRemoveCustom
+  onComplete, modalOpen, onModalOpen, onMinimize, isCustom, onRemoveCustom,
+  serverStates
 }) {
-  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id, onComplete);
+  const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id, onComplete, serverStates);
   const useHours = totalSeconds >= 3600;
 
   // When Start is clicked: start timer AND open modal

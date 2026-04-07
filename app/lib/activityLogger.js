@@ -1,19 +1,18 @@
 /**
- * Activity Logger — localStorage-based history tracking
+ * Activity Logger — Server-backed history tracking (MongoDB)
  *
  * Two stores:
- *   1. timerHistory — completed/stopped timer sessions
- *   2. activityLog  — all habit-related actions
+ *   1. timerHistory — completed/stopped timer sessions → POST /api/timer-history
+ *   2. activityLog  — all habit-related actions → POST /api/activity-log
+ *
+ * All data is stored on the server so it syncs across devices.
+ * Fetching is done via GET requests.
  */
-
-const TIMER_HISTORY_KEY = "sk_timerHistory";
-const ACTIVITY_LOG_KEY = "sk_activityLog";
-const MAX_ENTRIES = 500;
 
 // ─── Timer History ───
 
 /**
- * Log a timer session.
+ * Log a timer session to the server.
  * @param {{ habitName, targetDuration, actualTime, status, isOpenEnded, extraTime }} entry
  *   status: "completed" | "partial" | "exceeded"
  */
@@ -25,32 +24,34 @@ export function logTimerEvent({
   isOpenEnded = false,
   extraTime = 0,
 }) {
-  try {
-    const history = getTimerHistory();
-    history.unshift({
-      id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  // Fire-and-forget POST to server
+  fetch("/api/timer-history", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       habitName,
       targetDuration,
       actualTime,
       status,
       isOpenEnded,
       extraTime,
-      timestamp: new Date().toISOString(),
-    });
-    // Cap history size
-    if (history.length > MAX_ENTRIES) history.length = MAX_ENTRIES;
-    localStorage.setItem(TIMER_HISTORY_KEY, JSON.stringify(history));
-  } catch {
-    // Storage full or unavailable
-  }
+    }),
+  }).catch(() => {
+    // Silent fail — server may be unreachable
+  });
 }
 
 /**
- * Get all timer history entries (newest first).
+ * Get all timer history entries from the server (newest first).
+ * Returns a Promise.
  */
-export function getTimerHistory() {
+export async function getTimerHistory() {
   try {
-    return JSON.parse(localStorage.getItem(TIMER_HISTORY_KEY)) || [];
+    const res = await fetch("/api/timer-history");
+    if (res.ok) {
+      return await res.json();
+    }
+    return [];
   } catch {
     return [];
   }
@@ -59,35 +60,31 @@ export function getTimerHistory() {
 // ─── Activity Log ───
 
 /**
- * Log a general activity.
+ * Log a general activity to the server.
  * @param {{ action, habitName, detail? }} entry
- *   action: "habit_checked" | "habit_unchecked" | "habit_created" | "habit_deleted"
- *           | "timer_started" | "timer_paused" | "timer_reset" | "timer_completed"
- *           | "timer_goal_reached" | "timer_stopped"
  */
 export function logActivity({ action, habitName, detail = "" }) {
-  try {
-    const log = getActivityLog();
-    log.unshift({
-      id: `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      action,
-      habitName,
-      detail,
-      timestamp: new Date().toISOString(),
-    });
-    if (log.length > MAX_ENTRIES) log.length = MAX_ENTRIES;
-    localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(log));
-  } catch {
-    // Storage full or unavailable
-  }
+  // Fire-and-forget POST to server
+  fetch("/api/activity-log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, habitName, detail }),
+  }).catch(() => {
+    // Silent fail
+  });
 }
 
 /**
- * Get all activity log entries (newest first).
+ * Get all activity log entries from the server (newest first).
+ * Returns a Promise.
  */
-export function getActivityLog() {
+export async function getActivityLog() {
   try {
-    return JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY)) || [];
+    const res = await fetch("/api/activity-log");
+    if (res.ok) {
+      return await res.json();
+    }
+    return [];
   } catch {
     return [];
   }
@@ -95,23 +92,22 @@ export function getActivityLog() {
 
 // ─── Clear ───
 
-export function clearTimerHistory() {
+export async function clearTimerHistory() {
   try {
-    localStorage.removeItem(TIMER_HISTORY_KEY);
+    await fetch("/api/timer-history", { method: "DELETE" });
   } catch {
     // Ignore
   }
 }
 
-export function clearActivityLog() {
+export async function clearActivityLog() {
   try {
-    localStorage.removeItem(ACTIVITY_LOG_KEY);
+    await fetch("/api/activity-log", { method: "DELETE" });
   } catch {
     // Ignore
   }
 }
 
-export function clearAllHistory() {
-  clearTimerHistory();
-  clearActivityLog();
+export async function clearAllHistory() {
+  await Promise.all([clearTimerHistory(), clearActivityLog()]);
 }

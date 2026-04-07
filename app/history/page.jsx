@@ -22,6 +22,7 @@ const ACTION_LABELS = {
   timer_completed: { icon: "🏁", label: "Timer Completed", color: "var(--green)" },
   timer_goal_reached: { icon: "🎯", label: "Goal Reached", color: "var(--green)" },
   timer_stopped: { icon: "⏹", label: "Timer Stopped", color: "var(--orange)" },
+  timer_auto_crossed: { icon: "❌", label: "Auto-Crossed", color: "var(--red)" },
 };
 
 const STATUS_STYLES = {
@@ -57,11 +58,24 @@ export default function HistoryPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [sortField, setSortField] = useState("timestamp");
   const [sortDir, setSortDir] = useState("desc");
+  const [loading, setLoading] = useState(true);
 
-  // Load data from localStorage
-  const refreshData = useCallback(() => {
-    setTimerHistory(getTimerHistory());
-    setActivityLog(getActivityLog());
+  // Load data from server (async)
+  const refreshData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [history, logs] = await Promise.all([
+        getTimerHistory(),
+        getActivityLog(),
+      ]);
+      setTimerHistory(history);
+      setActivityLog(logs);
+    } catch {
+      // Fallback: empty
+      setTimerHistory([]);
+      setActivityLog([]);
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -101,11 +115,11 @@ export default function HistoryPage() {
     }
   };
 
-  const handleClear = (target) => {
-    if (target === "all") clearAllHistory();
-    else if (target === "timers") clearTimerHistory();
-    else if (target === "activity") clearActivityLog();
-    refreshData();
+  const handleClear = async (target) => {
+    if (target === "all") await clearAllHistory();
+    else if (target === "timers") await clearTimerHistory();
+    else if (target === "activity") await clearActivityLog();
+    await refreshData();
     setShowClearConfirm(false);
   };
 
@@ -124,7 +138,7 @@ export default function HistoryPage() {
               <span className="accent">SK&apos;</span> HABIT{" "}
               <strong>TRACKER</strong>
             </h1>
-            <p className="header-subtitle">History & Activity Log</p>
+            <p className="header-subtitle">History &amp; Activity Log</p>
           </div>
           <div className="header-right">
             <div className="header-profile">
@@ -180,8 +194,16 @@ export default function HistoryPage() {
             </button>
           </div>
 
+          {/* Loading State */}
+          {loading && (
+            <div className="history-empty">
+              <span className="history-empty-icon">⏳</span>
+              <p>Loading history…</p>
+            </div>
+          )}
+
           {/* Timer History Tab */}
-          {tab === "timers" && (
+          {!loading && tab === "timers" && (
             <div className="history-section">
               {sortedTimerHistory.length === 0 ? (
                 <div className="history-empty">
@@ -255,7 +277,7 @@ export default function HistoryPage() {
           )}
 
           {/* Activity Log Tab */}
-          {tab === "activity" && (
+          {!loading && tab === "activity" && (
             <div className="history-section">
               {activityLog.length === 0 ? (
                 <div className="history-empty">

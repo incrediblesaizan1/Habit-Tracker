@@ -23,7 +23,11 @@ export async function GET() {
       stopwatchTime: s.stopwatchTime,
       goalReached: s.goalReached,
       lastTickAt: s.lastTickAt,
-      savedAt: s.lastTickAt, // alias for backward compat with frontend logic
+      savedAt: s.lastTickAt, // alias for backward compat
+      startedAt: s.startedAt || 0,
+      elapsedBeforePause: s.elapsedBeforePause || 0,
+      totalSeconds: s.totalSeconds || 0,
+      timerDate: s.timerDate || "",
     };
   }
 
@@ -37,8 +41,8 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { habitId, remaining, isRunning, phase, stopwatchTime, goalReached } =
-    await request.json();
+  const body = await request.json();
+  const { habitId } = body;
 
   if (!habitId) {
     return NextResponse.json({ error: "habitId required" }, { status: 400 });
@@ -47,12 +51,16 @@ export async function POST(request) {
   await dbConnect();
 
   const update = {
-    remaining: remaining ?? 0,
-    isRunning: isRunning ?? false,
-    phase: phase ?? "countdown",
-    stopwatchTime: stopwatchTime ?? 0,
-    goalReached: goalReached ?? false,
+    remaining: body.remaining ?? 0,
+    isRunning: body.isRunning ?? false,
+    phase: body.phase ?? "countdown",
+    stopwatchTime: body.stopwatchTime ?? 0,
+    goalReached: body.goalReached ?? false,
     lastTickAt: Date.now(),
+    startedAt: body.startedAt ?? 0,
+    elapsedBeforePause: body.elapsedBeforePause ?? 0,
+    totalSeconds: body.totalSeconds ?? 0,
+    timerDate: body.timerDate ?? "",
   };
 
   await TimerState.findOneAndUpdate(
@@ -64,20 +72,25 @@ export async function POST(request) {
   return NextResponse.json({ ok: true });
 }
 
-// DELETE — Clear a timer state
+// DELETE — Clear a timer state (single or bulk)
 export async function DELETE(request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { habitId } = await request.json();
-  if (!habitId) {
-    return NextResponse.json({ error: "habitId required" }, { status: 400 });
-  }
+  const { habitId, habitIds } = await request.json();
 
   await dbConnect();
-  await TimerState.deleteOne({ userId, habitId });
+
+  if (habitIds && Array.isArray(habitIds)) {
+    // Bulk delete
+    await TimerState.deleteMany({ userId, habitId: { $in: habitIds } });
+  } else if (habitId) {
+    await TimerState.deleteOne({ userId, habitId });
+  } else {
+    return NextResponse.json({ error: "habitId or habitIds required" }, { status: 400 });
+  }
 
   return NextResponse.json({ ok: true });
 }
