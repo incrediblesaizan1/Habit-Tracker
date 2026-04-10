@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 const MOTIVATIONAL_QUOTES = [
- "The storm does not last forever. Neither does the version of you that is struggling.",
+  "This too shall pass. Every dark night breaks into dawn.",
+  "Everything will be right. The universe has never once forgotten about you.",
+  "One day you will get exactly what you want — hold on until that day finds you.",
+  "Disappear until you become what you want. Let the silence shape you.",
+  "The storm does not last forever. Neither does the version of you that is struggling.",
   "Go quiet. Go inward. Come back as everything you prayed for.",
   "You are not behind. You are becoming. There is a difference.",
   "Disappear into your work, your healing, your growth — and reappear as the answer to your own prayers.",
