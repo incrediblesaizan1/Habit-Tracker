@@ -30,6 +30,7 @@ export default function Home() {
     setDayStatus,
     isDayCompleted,
     isDayCrossed,
+    isDayEmpty,
     getHabitMonthlyCount,
     getDayCompletionCount,
     totalCompleted,
@@ -217,6 +218,7 @@ export default function Home() {
                 setDayStatus={setDayStatus}
                 isDayCompleted={isDayCompleted}
                 isDayCrossed={isDayCrossed}
+                isDayEmpty={isDayEmpty}
                 getHabitMonthlyCount={getHabitMonthlyCount}
                 removeHabit={removeHabit}
               />

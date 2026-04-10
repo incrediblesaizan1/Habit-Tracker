@@ -76,7 +76,7 @@ export function useHabits() {
   // Helper to get habit data for current month
   const getHabitData = useCallback(
     (habitId) => {
-      return completions[monthKey]?.[habitId] || { days: [], crossedDays: [] };
+      return completions[monthKey]?.[habitId] || { days: [], crossedDays: [], emptyDays: [] };
     },
     [completions, monthKey],
   );
@@ -88,27 +88,34 @@ export function useHabits() {
         const updated = { ...prev };
         const monthData = { ...(updated[monthKey] || {}) };
         const habitData = {
-          ...(monthData[habitId] || { days: [], crossedDays: [] }),
+          ...(monthData[habitId] || { days: [], crossedDays: [], emptyDays: [] }),
         };
         const days = [...habitData.days];
         const crossedDays = [...habitData.crossedDays];
+        const emptyDays = [...(habitData.emptyDays || [])];
 
-        // Remove from both first
+        // Remove from all arrays first
         const daysIdx = days.indexOf(day);
         if (daysIdx > -1) days.splice(daysIdx, 1);
 
         const crossedIdx = crossedDays.indexOf(day);
         if (crossedIdx > -1) crossedDays.splice(crossedIdx, 1);
 
+        const emptyIdx = emptyDays.indexOf(day);
+        if (emptyIdx > -1) emptyDays.splice(emptyIdx, 1);
+
         // Add to the correct array
         if (status === "completed") {
           days.push(day);
         } else if (status === "crossed") {
           crossedDays.push(day);
+        } else if (status === "empty") {
+          emptyDays.push(day);
         }
 
         habitData.days = days;
         habitData.crossedDays = crossedDays;
+        habitData.emptyDays = emptyDays;
         monthData[habitId] = habitData;
         updated[monthKey] = monthData;
         return updated;
@@ -144,6 +151,13 @@ export function useHabits() {
     [getHabitData],
   );
 
+  const isDayEmpty = useCallback(
+    (habitId, day) => {
+      return getHabitData(habitId).emptyDays?.includes(day) ?? false;
+    },
+    [getHabitData],
+  );
+
   const getHabitMonthlyCount = useCallback(
     (habitId) => {
       return getHabitData(habitId).days?.length ?? 0;
@@ -156,6 +170,7 @@ export function useHabits() {
       const explicitCrossed = getHabitData(habit.id).crossedDays?.length ?? 0;
       const completedDays = getHabitData(habit.id).days || [];
       const crossedDays = getHabitData(habit.id).crossedDays || [];
+      const emptyDays = getHabitData(habit.id).emptyDays || [];
 
       let autoCrossedCount = 0;
       const habitCreated = habit.createdAt ? new Date(habit.createdAt) : null;
@@ -184,7 +199,8 @@ export function useHabits() {
           isPast &&
           isAfterCreation &&
           !completedDays.includes(d) &&
-          !crossedDays.includes(d)
+          !crossedDays.includes(d) &&
+          !emptyDays.includes(d)
         ) {
           autoCrossedCount++;
         }
@@ -327,6 +343,7 @@ export function useHabits() {
     setDayStatus,
     isDayCompleted,
     isDayCrossed,
+    isDayEmpty,
     getHabitMonthlyCount,
     getDayCompletionCount,
     totalCompleted,

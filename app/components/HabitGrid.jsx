@@ -12,6 +12,7 @@ export default function HabitGrid({
   setDayStatus,
   isDayCompleted,
   isDayCrossed,
+  isDayEmpty,
   getHabitMonthlyCount,
   removeHabit,
 }) {
@@ -246,8 +247,9 @@ export default function HabitGrid({
                   const isAfterCreation = habitCreatedDay
                     ? cellDate >= habitCreatedDay
                     : false;
+                  const isExplicitlyEmpty = isDayEmpty(habit.id, dayObj.day);
                   const autoCrossed =
-                    !done && !crossed && isPast && isAfterCreation;
+                    !done && !crossed && !isExplicitlyEmpty && isPast && isAfterCreation;
 
                   const showCrossed = crossed || autoCrossed;
 

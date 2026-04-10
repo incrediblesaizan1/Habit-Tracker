@@ -18,7 +18,7 @@ export async function GET(request) {
   await dbConnect();
   const completions = await Completion.find({ userId, monthKey }).lean();
 
-  // Build map: { habitId: { days: [...], crossedDays: [...] } }
+  // Build map: { habitId: { days: [...], crossedDays: [...], emptyDays: [...] } }
   const map = {};
   for (const c of completions) {
     // Deduplicate array values in case legacy race conditions corrupted the database
@@ -26,10 +26,14 @@ export async function GET(request) {
     const crossedDays = [...new Set(c.crossedDays || [])].filter(
       (d) => !days.includes(d) // Guarantee a day isn't marked both crossed and completed
     );
+    const emptyDays = [...new Set(c.emptyDays || [])].filter(
+      (d) => !days.includes(d) && !crossedDays.includes(d)
+    );
 
     map[c.habitId.toString()] = {
       days,
       crossedDays,
+      emptyDays,
     };
   }
 
@@ -61,17 +65,21 @@ export async function POST(request) {
       monthKey,
       days: status === "completed" ? [day] : [],
       crossedDays: status === "crossed" ? [day] : [],
+      emptyDays: status === "empty" ? [day] : [],
     });
   } else {
-    // Remove from both arrays first to prevent duplicates
+    // Remove from all arrays first to prevent duplicates
     completion.days = completion.days.filter((d) => d !== day);
     completion.crossedDays = completion.crossedDays.filter((d) => d !== day);
+    completion.emptyDays = (completion.emptyDays || []).filter((d) => d !== day);
 
     if (status === "completed") {
       completion.days.push(day);
     } else if (status === "crossed") {
       completion.crossedDays.push(day);
-    } // if "empty", we just save the removal
+    } else if (status === "empty") {
+      completion.emptyDays.push(day);
+    }
 
     await completion.save();
   }
@@ -79,5 +87,6 @@ export async function POST(request) {
   return NextResponse.json({
     days: completion.days,
     crossedDays: completion.crossedDays,
+    emptyDays: completion.emptyDays || [],
   });
 }
