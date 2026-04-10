@@ -92,6 +92,15 @@ export async function getActivityLog() {
 
 // ─── Clear ───
 
+export async function deleteTimerHistoryEntry(id) {
+  try {
+    const res = await fetch(`/api/timer-history/${id}`, { method: "DELETE" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function clearTimerHistory() {
   try {
     await fetch("/api/timer-history", { method: "DELETE" });

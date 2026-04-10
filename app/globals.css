@@ -2119,6 +2119,91 @@ body {
   background: rgba(239, 68, 68, 0.06) !important;
 }
 
+/* Actions column */
+.history-actions-th {
+  width: 48px;
+  padding: 12px 8px !important;
+}
+.history-cell-actions {
+  padding: 8px 8px !important;
+  text-align: center;
+}
+
+/* Delete button (trash icon) */
+.history-delete-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0;
+  font-family: inherit;
+  padding: 0;
+}
+.history-table tbody tr:hover .history-delete-btn {
+  opacity: 1;
+}
+.history-delete-btn:hover {
+  opacity: 1;
+  color: var(--red);
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+/* Confirm / Cancel inline buttons */
+.history-delete-confirm {
+  display: inline-flex;
+  gap: 4px;
+  animation: fadeIn 0.15s ease;
+}
+.history-delete-yes,
+.history-delete-no {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  padding: 0;
+}
+.history-delete-yes {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--red);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.history-delete-yes:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+.history-delete-yes:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.history-delete-no {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.history-delete-no:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 /* Activity Log */
 .activity-log-list {
   padding: 8px 0;

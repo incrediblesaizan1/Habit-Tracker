@@ -8,6 +8,7 @@ import {
   clearAllHistory,
   clearTimerHistory,
   clearActivityLog,
+  deleteTimerHistoryEntry,
 } from "../lib/activityLogger";
 import { formatDurationLabel } from "../lib/timeParser";
 
@@ -61,6 +62,8 @@ export default function HistoryPage() {
   const [sortField, setSortField] = useState("timestamp");
   const [sortDir, setSortDir] = useState("desc");
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   // Load data from server (async)
   const refreshData = useCallback(async () => {
@@ -123,6 +126,16 @@ export default function HistoryPage() {
     else if (target === "activity") await clearActivityLog();
     await refreshData();
     setShowClearConfirm(false);
+  };
+
+  const handleDeleteEntry = async (id) => {
+    setDeletingId(id);
+    const ok = await deleteTimerHistoryEntry(id);
+    if (ok) {
+      setTimerHistory((prev) => prev.filter((e) => e.id !== id));
+    }
+    setDeletingId(null);
+    setConfirmDeleteId(null);
   };
 
   const sortIcon = (field) => {
@@ -235,6 +248,7 @@ export default function HistoryPage() {
                         <th onClick={() => handleSort("status")} className="sortable">
                           Status {sortIcon("status")}
                         </th>
+                        <th className="history-actions-th"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -287,6 +301,35 @@ export default function HistoryPage() {
                                   <span className="history-status-pct"> {pct}%</span>
                                 )}
                               </span>
+                            </td>
+                            <td className="history-cell-actions">
+                              {confirmDeleteId === entry.id ? (
+                                <span className="history-delete-confirm">
+                                  <button
+                                    className="history-delete-yes"
+                                    onClick={() => handleDeleteEntry(entry.id)}
+                                    disabled={deletingId === entry.id}
+                                    title="Confirm delete"
+                                  >
+                                    {deletingId === entry.id ? "…" : "✓"}
+                                  </button>
+                                  <button
+                                    className="history-delete-no"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                    title="Cancel"
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  className="history-delete-btn"
+                                  onClick={() => setConfirmDeleteId(entry.id)}
+                                  title="Delete this entry"
+                                >
+                                  🗑
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );
