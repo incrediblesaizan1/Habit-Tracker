@@ -4,13 +4,21 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 const MOTIVATIONAL_QUOTES = [
-  "Small steps for big changes.",
-  "Consistency is key.",
-  "Don't break the chain.",
-  "One day at a time.",
-  "Progress, not perfection.",
-  "You got this!",
-  "Keep showing up.",
+ "The storm does not last forever. Neither does the version of you that is struggling.",
+  "Go quiet. Go inward. Come back as everything you prayed for.",
+  "You are not behind. You are becoming. There is a difference.",
+  "Disappear into your work, your healing, your growth — and reappear as the answer to your own prayers.",
+  "Not yet is not never. Keep going.",
+  "The cocoon is not a prison. It is a promise.",
+  "Suffer quietly, grow loudly, arrive beautifully.",
+  "One day you will look back and call this the beginning.",
+  "Be patient with the unfolding. Great things do not arrive — they bloom.",
+  "The life you want is waiting for the person you are becoming.",
+  "Withdraw. Rebuild. Return unrecognizable.",
+  "Every version of you that fell apart made room for the one that won't.",
+  "Trust the silence. Something magnificent is being built inside it.",
+  "You don't need to explain your absence. Let your arrival speak.",
+  "This chapter feels like an ending. It is actually an origin story."
 ];
 
 export default function YearProgress() {
