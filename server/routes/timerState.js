@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     const states = await TimerState.find({ userId }).lean();
     const map = {};
@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { habitId } = req.body;
     if (!habitId) {
       return res.status(400).json({ error: "habitId required" });
@@ -64,7 +64,7 @@ router.post("/", async (req, res) => {
 
 router.delete("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { habitId, habitIds } = req.body;
     await dbConnect();
     if (habitIds && Array.isArray(habitIds)) {

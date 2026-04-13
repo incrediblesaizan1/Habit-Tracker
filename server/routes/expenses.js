@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     const { month, year } = req.query;
     let filter = { userId };
@@ -34,7 +34,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { type, amount, description, category, date } = req.body;
     if (!type || !amount || !description) {
       return res.status(400).json({ error: "type, amount, and description are required" });
@@ -64,7 +64,7 @@ router.post("/", async (req, res) => {
 // DELETE by id
 router.delete("/:id", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { id } = req.params;
     await dbConnect();
     const deleted = await Expense.findOneAndDelete({ _id: id, userId });

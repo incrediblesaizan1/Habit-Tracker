@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     const history = await TimerHistory.find({ userId })
       .sort({ timestamp: -1 })
@@ -30,7 +30,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { habitName, targetDuration, actualTime, status, isOpenEnded, extraTime } = req.body;
     if (!habitName || !status) {
       return res.status(400).json({ error: "habitName and status required" });
@@ -54,7 +54,7 @@ router.post("/", async (req, res) => {
 // DELETE all
 router.delete("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     await TimerHistory.deleteMany({ userId });
     res.json({ ok: true });
@@ -66,7 +66,7 @@ router.delete("/", async (req, res) => {
 // DELETE by id
 router.delete("/:id", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { id } = req.params;
     if (!id) {
       return res.status(400).json({ error: "Missing id" });

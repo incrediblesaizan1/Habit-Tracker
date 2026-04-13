@@ -7,7 +7,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const monthKey = req.query.monthKey;
     if (!monthKey) {
       return res.status(400).json({ error: "monthKey required" });
@@ -86,7 +86,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { monthKey, name } = req.body;
     if (!monthKey || !name || !name.trim()) {
       return res.status(400).json({ error: "monthKey and name are required" });
@@ -114,7 +114,7 @@ router.post("/", async (req, res) => {
 
 router.delete("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { monthKey, habitId } = req.body;
     if (!monthKey || !habitId) {
       return res.status(400).json({ error: "monthKey and habitId are required" });

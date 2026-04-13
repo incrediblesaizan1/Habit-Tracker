@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const month = parseInt(req.query.month, 10);
     const year = parseInt(req.query.year, 10);
     if (isNaN(month) || isNaN(year)) {
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { goal, targetDate, sacrifices, month, year } = req.body;
     if (typeof month !== "number" || typeof year !== "number") {
       return res.status(400).json({ error: "Month and year are required" });

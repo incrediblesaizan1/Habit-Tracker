@@ -7,7 +7,7 @@ const router = Router();
 // GET — Fetch completions for a month
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const monthKey = req.query.monthKey;
     if (!monthKey) {
       return res.status(400).json({ error: "monthKey required" });
@@ -38,7 +38,7 @@ router.get("/", async (req, res) => {
 // POST — Set day status
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { habitId, monthKey, day, status } = req.body;
 
     if (!habitId || !monthKey || day == null || !status) {

@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const date = req.query.date;
     await dbConnect();
     if (date) {
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { date, content } = req.body;
     await dbConnect();
     const journal = await Journal.findOneAndUpdate(

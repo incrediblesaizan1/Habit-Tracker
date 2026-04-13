@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     const timers = await CustomTimer.find({ userId }).lean();
     const result = timers.map((t) => ({
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { id, name, totalSeconds, isOpenEnded } = req.body;
     if (!id || !name || !totalSeconds) {
       return res.status(400).json({ error: "id, name, totalSeconds required" });
@@ -42,7 +42,7 @@ router.post("/", async (req, res) => {
 
 router.delete("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { id } = req.body;
     if (!id) {
       return res.status(400).json({ error: "id required" });

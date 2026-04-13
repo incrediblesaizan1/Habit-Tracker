@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     const habits = await Habit.find({ userId }).sort({ createdAt: 1 }).lean();
     const mapped = habits.map((h) => ({
@@ -22,7 +22,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { name } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: "Name is required" });

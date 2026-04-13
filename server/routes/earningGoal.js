@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     let goal = await EarningGoal.findOne({ userId }).lean();
     if (!goal) {
@@ -20,7 +20,7 @@ router.get("/", async (req, res) => {
 
 router.put("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { goalAmount, currentBalance } = req.body;
     await dbConnect();
     const goal = await EarningGoal.findOneAndUpdate(

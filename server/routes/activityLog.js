@@ -7,7 +7,7 @@ const router = Router();
 // GET — Fetch activity log
 router.get("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     const logs = await ActivityLog.find({ userId })
       .sort({ timestamp: -1 })
@@ -31,7 +31,7 @@ router.get("/", async (req, res) => {
 // POST — Log a new activity
 router.post("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     const { action, habitName, detail } = req.body;
 
     if (!action) {
@@ -55,7 +55,7 @@ router.post("/", async (req, res) => {
 // DELETE — Clear all activity log
 router.delete("/", async (req, res) => {
   try {
-    const { userId } = req.auth;
+    const { userId } = req.auth();
     await dbConnect();
     await ActivityLog.deleteMany({ userId });
     res.json({ ok: true });
