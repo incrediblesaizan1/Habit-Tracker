@@ -17,7 +17,7 @@
   --orange-glow: rgba(249, 115, 22, 0.25);
   --red: #ef4444;
   --green: #22c55e;
-  --border: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.10);
   --cell-border: #1e2d4a;
   --check-bg: #14b8a6;
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
@@ -31,6 +31,15 @@
   --w-done: 56px;
   --w-total: 52px;
   --sz-check: 20px;
+  /* Gradient tokens */
+  --grad-teal: linear-gradient(135deg, rgba(14, 20, 38, 0.88) 0%, rgba(10, 45, 50, 0.85) 50%, rgba(14, 20, 38, 0.88) 100%);
+  --grad-purple: linear-gradient(135deg, rgba(14, 20, 38, 0.88) 0%, rgba(40, 18, 55, 0.80) 50%, rgba(14, 20, 38, 0.88) 100%);
+  --grad-blue: linear-gradient(135deg, rgba(14, 20, 38, 0.88) 0%, rgba(15, 30, 60, 0.85) 50%, rgba(14, 20, 38, 0.88) 100%);
+  --grad-warm: linear-gradient(135deg, rgba(14, 20, 38, 0.88) 0%, rgba(50, 30, 15, 0.78) 50%, rgba(14, 20, 38, 0.88) 100%);
+  --grad-emerald: linear-gradient(135deg, rgba(14, 20, 38, 0.88) 0%, rgba(10, 50, 35, 0.82) 50%, rgba(14, 20, 38, 0.88) 100%);
+  --grad-rose: linear-gradient(135deg, rgba(14, 20, 38, 0.88) 0%, rgba(55, 15, 30, 0.78) 50%, rgba(14, 20, 38, 0.88) 100%);
+  --grad-ocean: linear-gradient(135deg, rgba(10, 18, 40, 0.88) 0%, rgba(8, 40, 65, 0.82) 50%, rgba(14, 20, 38, 0.88) 100%);
+  --grad-gold: linear-gradient(135deg, rgba(14, 20, 38, 0.88) 0%, rgba(55, 45, 10, 0.75) 50%, rgba(14, 20, 38, 0.88) 100%);
 }
 
 @media (min-width: 1024px) {
@@ -118,12 +127,12 @@ body {
   padding: 12px 0;
 }
 .header-left {
-  background: var(--bg-card);
+  background: var(--grad-teal);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(20, 184, 166, 0.15);
   border-radius: var(--radius);
   padding: 14px 24px;
-  transition: box-shadow 0.3s;
+  transition: box-shadow 0.3s, border-color 0.3s;
 }
 .header-left:hover {
   box-shadow: 0 4px 20px rgba(20, 184, 166, 0.08);
@@ -152,9 +161,9 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--bg-card);
+  background: var(--grad-purple);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius-sm);
   padding: 6px 14px 6px 8px;
   transition: all 0.3s;
@@ -182,8 +191,8 @@ body {
   font-weight: 700;
 }
 .month-selectors select {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--grad-blue);
+  border: 1px solid rgba(59, 130, 246, 0.15);
   color: #fff;
   padding: 6px 12px;
   border-radius: var(--radius-sm);
@@ -194,7 +203,7 @@ body {
   transition: border-color 0.2s;
 }
 .month-selectors select:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(59, 130, 246, 0.3);
 }
 .month-selectors select:focus {
   border-color: var(--accent);
@@ -215,9 +224,9 @@ body {
 
 /* ─── DAILY FOCUS ─── */
 .daily-focus-section {
-  background: var(--bg-card);
+  background: var(--grad-ocean);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(56, 189, 248, 0.12);
   border-radius: var(--radius);
   padding: 24px;
   margin-bottom: 16px;
@@ -439,9 +448,9 @@ body {
 
 /* ─── GOAL & HABIT SETUP ─── */
 .goal-setup-section {
-  background: var(--bg-card);
+  background: var(--grad-emerald);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(16, 185, 129, 0.12);
   border-radius: var(--radius);
   padding: 24px;
   margin-bottom: 16px;
@@ -598,9 +607,9 @@ body {
 
 /* ─── HABIT BOARD ─── */
 .habit-board {
-  background: var(--bg-card);
+  background: var(--grad-blue);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(59, 130, 246, 0.12);
   border-radius: var(--radius);
   overflow: visible;
   height: max-content;
@@ -995,9 +1004,9 @@ body {
 }
 /* ─── ACTIVE TIMER BAR (Horizontal) ─── */
 .active-timer-bar {
-  background: var(--bg-card);
+  background: var(--grad-warm);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(249, 115, 22, 0.15);
   border-radius: var(--radius);
   display: flex;
   align-items: center;
@@ -1971,9 +1980,9 @@ body {
 
 /* History Section */
 .history-section {
-  background: var(--bg-card);
+  background: var(--grad-blue);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(59, 130, 246, 0.12);
   border-radius: var(--radius);
   overflow: hidden;
   min-height: 300px;
@@ -2320,9 +2329,9 @@ body {
   gap: 16px;
 }
 .chart-card {
-  background: var(--bg-card);
+  background: var(--grad-teal);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(20, 184, 166, 0.12);
   border-radius: var(--radius);
   padding: 20px;
   border-top: 2px solid var(--accent);
@@ -2387,9 +2396,9 @@ body {
   gap: 20px;
 }
 .sidebar-card {
-  background: var(--bg-card);
+  background: var(--grad-purple);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(139, 92, 246, 0.12);
   border-radius: var(--radius);
   padding: 16px;
   position: relative;
@@ -2537,8 +2546,8 @@ body {
   }
 }
 .modal-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--grad-purple);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius);
   padding: 28px;
   width: 400px;
@@ -2633,14 +2642,14 @@ body {
 }
 .auth-card {
   text-align: center;
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  background: var(--grad-teal);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(20, 184, 166, 0.18);
   border-radius: var(--radius);
   padding: 48px 40px;
   max-width: 420px;
   width: 90vw;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lg);
 }
 .auth-title {
   font-size: 28px;
@@ -2677,9 +2686,9 @@ body {
 
 /* ─── DAILY JOURNAL ─── */
 .journal-section {
-  background: var(--bg-card);
+  background: var(--grad-purple);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius);
   padding: 24px;
   border-top: 2px solid #8b5cf6;
@@ -3340,8 +3349,8 @@ body {
   margin-bottom: 6px;
 }
 .expense-month-bar select {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--grad-gold);
+  border: 1px solid rgba(234, 179, 8, 0.15);
   color: #fff;
   padding: 6px 14px;
   border-radius: var(--radius-sm);
@@ -3389,9 +3398,9 @@ body {
 }
 
 .expense-summary-card {
-  background: var(--bg-card);
+  background: var(--grad-gold);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(234, 179, 8, 0.12);
   border-radius: var(--radius);
   padding: 24px 20px;
   text-align: center;
@@ -3518,9 +3527,9 @@ body {
 
 /* Earning Goal Card */
 .expense-goal-card {
-  background: var(--bg-card);
+  background: var(--grad-emerald);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(16, 185, 129, 0.12);
   border-radius: var(--radius);
   padding: 24px;
 }
@@ -3630,9 +3639,9 @@ body {
 
 /* ─── Add Transaction Form ─── */
 .expense-form-card {
-  background: var(--bg-card);
+  background: var(--grad-blue);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(59, 130, 246, 0.12);
   border-radius: var(--radius);
   padding: 24px;
 }
@@ -3726,9 +3735,9 @@ body {
 
 /* ─── Transactions List ─── */
 .expense-transactions-section {
-  background: var(--bg-card);
+  background: var(--grad-warm);
   backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(249, 115, 22, 0.12);
   border-radius: var(--radius);
   padding: 24px;
 }
@@ -3873,8 +3882,8 @@ body {
   gap: 6px;
   padding: 8px 16px;
   border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--grad-teal);
+  border: 1px solid rgba(20, 184, 166, 0.18);
   color: var(--accent-light);
   font-size: 13px;
   font-weight: 600;
@@ -3980,9 +3989,9 @@ body {
   padding: 24px;
 }
 .auth-card {
-  background: var(--bg-card);
+  background: var(--grad-teal);
   backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(20, 184, 166, 0.18);
   border-radius: var(--radius);
   padding: 48px 40px;
   text-align: center;
