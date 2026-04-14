@@ -176,6 +176,9 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
   const [goalReached, setGoalReached] = useState(initial.current.goalReached);
   const [justCompleted, setJustCompleted] = useState(false);
 
+  // Track which day this timer session belongs to
+  const timerDayRef = useRef(getTodayKey());
+
   // Display values computed from timestamps
   const [displayRemaining, setDisplayRemaining] = useState(totalSeconds);
   const [displayStopwatch, setDisplayStopwatch] = useState(0);
@@ -185,6 +188,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
   const goalReachedRef = useRef(goalReached);
   goalReachedRef.current = goalReached;
   const completionFiredRef = useRef(false);
+  const midnightResetDoneRef = useRef(false);
 
   // ── Compute current elapsed seconds from timestamps ──
   const computeElapsed = useCallback(() => {
@@ -198,6 +202,49 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
   // ── Tick: update display values using wall clock ──
   useEffect(() => {
     const updateDisplay = () => {
+      // ── Midnight auto-reset: if the day has changed while timer is active, reset it ──
+      const currentDay = getTodayKey();
+      if (timerDayRef.current !== currentDay && !midnightResetDoneRef.current) {
+        const wasRunning = isRunning;
+        const elapsed = computeElapsed();
+
+        // Log history for any time spent before midnight
+        if (elapsed > 0) {
+          const swTime = phase === "stopwatch"
+            ? stopwatchTime + (wasRunning && startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0)
+            : 0;
+          const actualTime = phase === "countdown"
+            ? Math.min(elapsed, totalSeconds)
+            : totalSeconds + swTime;
+
+          let status = "incomplete";
+          if (goalReachedRef.current && swTime > 0) status = "exceeded";
+          else if (goalReachedRef.current) status = "completed";
+
+          logTimerEvent({
+            habitName, targetDuration: totalSeconds, actualTime: Math.round(actualTime),
+            status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
+          });
+        }
+
+        // Reset to fresh state for the new day
+        midnightResetDoneRef.current = true;
+        setIsRunning(false);
+        setPhase("countdown");
+        setStartedAt(0);
+        setElapsedBeforePause(0);
+        setStopwatchTime(0);
+        setGoalReached(false);
+        setJustCompleted(false);
+        setDisplayRemaining(totalSeconds);
+        setDisplayStopwatch(0);
+        completionFiredRef.current = false;
+        timerDayRef.current = currentDay;
+        deleteServerTimerState(habitId);
+        logActivity({ action: "timer_reset", habitName, detail: "Auto-reset at midnight" });
+        return;
+      }
+
       const elapsed = computeElapsed();
 
       if (phase === "countdown") {
@@ -268,10 +315,8 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
 
     updateDisplay();
 
-    if (!isRunning) return;
-
-    // Use setInterval for regular updates, but compute from wall clock
-    const intervalId = setInterval(updateDisplay, 500); // 500ms for smooth updates
+    // Always run interval (even when paused) so midnight detection works
+    const intervalId = setInterval(updateDisplay, 1000);
     return () => clearInterval(intervalId);
   }, [isRunning, phase, startedAt, elapsedBeforePause, stopwatchTime, totalSeconds, isOpenEnded, habitName, habitId, computeElapsed]);
 
@@ -333,6 +378,10 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
       newGoal = false;
       completionFiredRef.current = false;
     }
+
+    // Record the day this timer session belongs to
+    timerDayRef.current = getTodayKey();
+    midnightResetDoneRef.current = false;
 
     setStartedAt(now);
     setElapsedBeforePause(newElapsed);
@@ -637,7 +686,7 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
     });
   }, []);
 
-  // ── Poll server every 30s for cross-device sync ──
+  // ── Poll server every 30s for cross-device sync + midnight re-fetch ──
   useEffect(() => {
     if (!serverLoaded) return;
 
@@ -647,7 +696,20 @@ export default function ActiveTimerPanel({ habits, placement = "full", setDaySta
       });
     }, SYNC_INTERVAL_MS);
 
-    return () => clearInterval(intervalId);
+    // Schedule a forced re-fetch right at midnight to trigger day-change resets
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+    const midnightRefetch = setTimeout(() => {
+      fetchServerTimerStates().then((states) => {
+        setServerStates(states);
+      });
+    }, msUntilMidnight);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(midnightRefetch);
+    };
   }, [serverLoaded]);
 
   // ── Re-fetch on tab visibility change (user switches back to this tab) ──
