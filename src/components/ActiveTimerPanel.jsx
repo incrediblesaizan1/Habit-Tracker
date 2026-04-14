@@ -135,6 +135,17 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
   const serverSnapshot = serverStates?.[habitId] || null;
 
   const computeInitial = () => {
+    // If server state belongs to a previous day, start fresh
+    if (serverSnapshot && serverSnapshot.timerDate && serverSnapshot.timerDate !== getTodayKey()) {
+      return {
+        isRunning: false,
+        phase: "countdown",
+        startedAt: 0,
+        elapsedBeforePause: 0,
+        stopwatchTime: 0,
+        goalReached: false,
+      };
+    }
     if (!serverSnapshot) {
       return {
         isRunning: false,
@@ -268,6 +279,24 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
   const lastSyncRef = useRef(null);
   useEffect(() => {
     if (!serverSnapshot) return;
+
+    // If server state belongs to a previous day, reset to fresh state
+    const today = getTodayKey();
+    if (serverSnapshot.timerDate && serverSnapshot.timerDate !== today) {
+      // Timer is from yesterday — reset locally, server cleanup handled by useMidnightCheck
+      setIsRunning(false);
+      setPhase("countdown");
+      setStartedAt(0);
+      setElapsedBeforePause(0);
+      setStopwatchTime(0);
+      setGoalReached(false);
+      setDisplayRemaining(totalSeconds);
+      setDisplayStopwatch(0);
+      completionFiredRef.current = false;
+      lastSyncRef.current = null;
+      return;
+    }
+
     // Avoid re-applying the same snapshot
     const snapshotKey = JSON.stringify(serverSnapshot);
     if (lastSyncRef.current === snapshotKey) return;
@@ -289,7 +318,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     setGoalReached(serverGoalReached);
     setStopwatchTime(serverStopwatch);
     completionFiredRef.current = serverGoalReached;
-  }, [serverSnapshot]);
+  }, [serverSnapshot, totalSeconds]);
 
   // ── Actions ──
   const start = useCallback(() => {
@@ -444,14 +473,24 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
 // ─── Midnight Auto-Cross Hook (Server-backed) ──────────────────
 // ═══════════════════════════════════════════════════════════════════
 function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
-  const hasRunRef = useRef(false);
+  // Track which habitId+timerDate combos we've already processed to avoid duplicate logging
+  const processedRef = useRef(new Set());
+  // Track the current day so we can detect midnight transitions
+  const currentDayRef = useRef(getTodayKey());
 
   useEffect(() => {
-    if (!habits || !setDayStatus || !serverStates || hasRunRef.current) return;
-
-    const today = getTodayKey();
+    if (!habits || !setDayStatus || !serverStates) return;
 
     const runCheck = () => {
+      const today = getTodayKey();
+
+      // If the day has changed since last check, reset processed set
+      // so we can re-evaluate any stale timers
+      if (currentDayRef.current !== today) {
+        processedRef.current = new Set();
+        currentDayRef.current = today;
+      }
+
       const staleHabitIds = [];
 
       habits.forEach((h) => {
@@ -465,15 +504,36 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
 
         // If the timer belongs to a previous day (not today)
         if (timerDate && timerDate !== today) {
+          const processKey = `${h.id}_${timerDate}`;
+          if (processedRef.current.has(processKey)) return; // already handled
+          processedRef.current.add(processKey);
+
           const wasCompleted = serverState.goalReached === true;
 
-          // Calculate actual time spent for this timer session
-          const serverElapsed = serverState.elapsedBeforePause || 0;
+          // Calculate actual time spent — include running segment if timer was active
+          let actualElapsed = serverState.elapsedBeforePause || 0;
+          if (serverState.isRunning && serverState.startedAt > 0) {
+            // Timer was still running when day changed;
+            // calculate how much time passed since startedAt until end of timerDate day (23:59:59)
+            const parts = timerDate.split("-");
+            if (parts.length === 3) {
+              const endOfDay = new Date(
+                parseInt(parts[0], 10),
+                parseInt(parts[1], 10) - 1,
+                parseInt(parts[2], 10),
+                23, 59, 59, 999
+              ).getTime();
+              // Cap the running segment to end-of-day so we don't over-count
+              const runEnd = Math.min(endOfDay, Date.now());
+              const runningSegment = Math.max(0, (runEnd - serverState.startedAt) / 1000);
+              actualElapsed += runningSegment;
+            }
+          }
+
           const serverTotalSec = serverState.totalSeconds || info.totalSeconds || 0;
 
           if (!wasCompleted) {
             // Timer was started/running on a previous day but NOT completed → mark as crossed
-            // Parse the timerDate to get the day number
             const parts = timerDate.split("-");
             if (parts.length === 3) {
               const timerDay = parseInt(parts[2], 10);
@@ -488,11 +548,11 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
                   });
 
                   // Log timer history so the actual time spent is recorded
-                  if (serverElapsed > 0) {
+                  if (actualElapsed > 0) {
                     logTimerEvent({
                       habitName: h.name,
                       targetDuration: serverTotalSec,
-                      actualTime: Math.round(Math.min(serverElapsed, serverTotalSec)),
+                      actualTime: Math.round(Math.min(actualElapsed, serverTotalSec)),
                       status: "crossed",
                       isOpenEnded: info.isOpenEnded || false,
                       extraTime: 0,
@@ -500,6 +560,24 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
                   }
                 }
               }
+            }
+          } else {
+            // Timer was completed — still record final history if not already done
+            // (e.g., open-ended timers that were still running in stopwatch mode)
+            if (actualElapsed > 0 && serverState.phase === "stopwatch") {
+              const swTime = serverState.stopwatchTime || 0;
+              let swActual = swTime;
+              if (serverState.isRunning && serverState.startedAt > 0) {
+                swActual += Math.max(0, (Date.now() - serverState.startedAt) / 1000);
+              }
+              logTimerEvent({
+                habitName: h.name,
+                targetDuration: serverTotalSec,
+                actualTime: Math.round(serverTotalSec + swActual),
+                status: "exceeded",
+                isOpenEnded: true,
+                extraTime: Math.round(swActual),
+              });
             }
           }
 
@@ -512,23 +590,27 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
       if (staleHabitIds.length > 0) {
         deleteServerTimerStates(staleHabitIds);
       }
-
-      hasRunRef.current = true;
     };
 
+    // Run check immediately
     runCheck();
 
-    // Schedule next check at midnight
+    // Schedule next check at midnight, then re-check every minute after that
     const now = new Date();
     const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
     const msUntilMidnight = nextMidnight.getTime() - now.getTime();
 
-    const timer = setTimeout(() => {
-      hasRunRef.current = false; // allow re-run after midnight
+    const midnightTimer = setTimeout(() => {
       runCheck();
     }, msUntilMidnight);
 
-    return () => clearTimeout(timer);
+    // Also poll every 60 seconds to catch edge cases (tab was in background, etc.)
+    const pollInterval = setInterval(runCheck, 60000);
+
+    return () => {
+      clearTimeout(midnightTimer);
+      clearInterval(pollInterval);
+    };
   }, [habits, setDayStatus, isDayCompleted, serverStates]);
 }
 
