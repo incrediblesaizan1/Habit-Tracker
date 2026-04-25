@@ -120,3 +120,22 @@ export async function clearActivityLog() {
 export async function clearAllHistory() {
   await Promise.all([clearTimerHistory(), clearActivityLog()]);
 }
+
+/**
+ * Log a daily snapshot of ALL tasks at midnight.
+ * Each entry: { habitName, actualTime, date }
+ * Tasks with 0 time still appear.
+ * @param {Array<{ habitName: string, actualTime: number }>} entries
+ * @param {string} date - YYYY-MM-DD of the day being snapshotted
+ */
+export async function logDailySnapshot(entries, date) {
+  try {
+    await fetch("/api/timer-history/snapshot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entries, date }),
+    });
+  } catch {
+    // Silent fail
+  }
+}

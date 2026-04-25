@@ -2014,128 +2014,113 @@ body {
   margin-top: 8px;
 }
 
-/* Timer History Table */
-.history-table-wrap {
-  overflow-x: auto;
+/* ─── Date-Grouped Timer History ─── */
+.history-date-groups {
+  padding: 8px 0 16px;
 }
-.history-table {
-  width: 100%;
-  border-collapse: collapse;
+.history-date-group {
+  padding: 0 24px;
+  margin-bottom: 8px;
 }
-.history-table th {
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 10px;
+.history-date-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Date heading row */
+.history-date-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 4px;
+}
+.history-date-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  flex-shrink: 0;
+}
+.history-date-heading h3 {
+  font-size: 14px;
   font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
-  white-space: nowrap;
+  color: #fff;
+  letter-spacing: 0.2px;
 }
-.history-table th.sortable {
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.2s;
+
+/* Task list under a date */
+.history-task-list {
+  padding: 4px 0 4px 6px;
 }
-.history-table th.sortable:hover {
-  color: var(--accent);
-}
-.history-table td {
-  padding: 12px 16px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-.history-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
-}
-.history-cell-habit {
+.history-task-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 8px 8px 8px 4px;
+  border-radius: var(--radius-xs);
+  transition: background 0.15s;
 }
-.history-habit-name {
-  font-weight: 600;
-  color: #fff;
+.history-task-row:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
-.history-open-tag {
-  font-size: 8px;
-  font-weight: 800;
-  color: var(--accent);
-  background: rgba(20, 184, 166, 0.12);
-  padding: 1px 5px;
-  border-radius: 3px;
-  letter-spacing: 0.5px;
+.history-task-row:hover .history-delete-btn {
+  opacity: 1;
 }
-.history-extra {
-  font-size: 10px;
-  color: var(--accent);
-  margin-left: 4px;
-  font-weight: 600;
-}
-.history-cell-date {
+
+/* Branch character */
+.history-task-branch {
+  font-family: "Courier New", monospace;
   color: var(--text-muted);
-}
-.history-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
-.history-status-icon {
-  font-size: 10px;
-  line-height: 1;
-}
-.history-status-pct {
-  font-size: 9px;
-  opacity: 0.7;
-  margin-left: 2px;
+  font-size: 12px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  user-select: none;
 }
 
-/* Progress bar inside Actual column */
-.history-actual-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.history-progress-bar {
-  width: 100%;
-  max-width: 80px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
+/* Task name */
+.history-task-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
   overflow: hidden;
-}
-.history-progress-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.4s ease;
-  min-width: 1px;
+  text-overflow: ellipsis;
+  max-width: 280px;
 }
 
-/* Missed / incomplete row highlight */
-.history-row-missed {
-  background: rgba(239, 68, 68, 0.03);
-}
-.history-row-missed:hover {
-  background: rgba(239, 68, 68, 0.06) !important;
+/* Dotted leader line */
+.history-task-dots {
+  flex: 1;
+  min-width: 20px;
+  height: 1px;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.12);
+  margin: 0 4px;
 }
 
-/* Actions column */
-.history-actions-th {
-  width: 48px;
-  padding: 12px 8px !important;
+/* Time display */
+.history-task-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-light);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
-.history-cell-actions {
-  padding: 8px 8px !important;
-  text-align: center;
+.history-task-time.zero {
+  color: var(--text-muted);
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+/* Task actions (delete) */
+.history-task-actions {
+  flex-shrink: 0;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Delete button (trash icon) */
@@ -2155,9 +2140,6 @@ body {
   opacity: 0;
   font-family: inherit;
   padding: 0;
-}
-.history-table tbody tr:hover .history-delete-btn {
-  opacity: 1;
 }
 .history-delete-btn:hover {
   opacity: 1;
@@ -2309,6 +2291,23 @@ body {
   margin-left: auto;
   font-size: 10px;
   color: var(--text-muted);
+}
+
+/* Responsive: smaller screens */
+@media (max-width: 600px) {
+  .history-date-group {
+    padding: 0 12px;
+  }
+  .history-task-name {
+    max-width: 140px;
+    font-size: 12px;
+  }
+  .history-task-time {
+    font-size: 12px;
+  }
+  .history-date-heading h3 {
+    font-size: 12px;
+  }
 }
 
 /* ─── INSIGHTS / CHARTS ─── */

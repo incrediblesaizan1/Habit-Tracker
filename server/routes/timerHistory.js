@@ -81,5 +81,37 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// POST /snapshot — batch write a daily snapshot of ALL tasks
+router.post("/snapshot", async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { entries, date } = req.body;
+    if (!entries || !Array.isArray(entries) || !date) {
+      return res.status(400).json({ error: "entries array and date required" });
+    }
+
+    await dbConnect();
+
+    // Build a timestamp for the snapshot (end of that day)
+    const [y, m, d] = date.split("-").map(Number);
+    const snapshotTime = new Date(y, m - 1, d, 23, 59, 59);
+
+    const docs = entries.map((e) => ({
+      userId,
+      habitName: e.habitName,
+      targetDuration: e.targetDuration || 0,
+      actualTime: e.actualTime || 0,
+      status: e.actualTime > 0 ? "completed" : "snapshot",
+      isOpenEnded: false,
+      extraTime: 0,
+      timestamp: snapshotTime,
+    }));
+
+    await TimerHistory.insertMany(docs);
+    res.json({ ok: true, count: docs.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

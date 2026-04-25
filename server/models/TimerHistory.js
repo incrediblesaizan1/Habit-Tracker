@@ -5,7 +5,7 @@ const TimerHistorySchema = new mongoose.Schema({
   habitName: { type: String, required: true },
   targetDuration: { type: Number, default: 0 },
   actualTime: { type: Number, default: 0 },
-  status: { type: String, enum: ["completed", "partial", "exceeded", "crossed", "incomplete"], default: "partial" },
+  status: { type: String, enum: ["completed", "partial", "exceeded", "crossed", "incomplete", "snapshot"], default: "partial" },
   isOpenEnded: { type: Boolean, default: false },
   extraTime: { type: Number, default: 0 },
   timestamp: { type: Date, default: Date.now },

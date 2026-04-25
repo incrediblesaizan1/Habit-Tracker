@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useUser, UserButton } from "@clerk/clerk-react";
 import {
@@ -9,7 +9,7 @@ import {
   clearActivityLog,
   deleteTimerHistoryEntry,
 } from "../lib/activityLogger";
-import { formatDurationLabel } from "../lib/timeParser";
+import { formatTimeClean } from "../lib/timeParser";
 
 const ACTION_LABELS = {
   habit_checked: { icon: "✓", label: "Habit Checked", color: "var(--accent)" },
@@ -25,13 +25,27 @@ const ACTION_LABELS = {
   timer_auto_crossed: { icon: "❌", label: "Auto-Crossed", color: "var(--red)" },
 };
 
-const STATUS_STYLES = {
-  completed: { label: "Completed", color: "#22c55e", bg: "rgba(34,197,94,0.1)", icon: "✓" },
-  partial: { label: "Partial", color: "#f97316", bg: "rgba(249,115,22,0.1)", icon: "◐" },
-  exceeded: { label: "Exceeded", color: "#14b8a6", bg: "rgba(20,184,166,0.1)", icon: "🔥" },
-  crossed: { label: "Crossed", color: "#ef4444", bg: "rgba(239,68,68,0.1)", icon: "✕" },
-  incomplete: { label: "Incomplete", color: "#eab308", bg: "rgba(234,179,8,0.1)", icon: "○" },
-};
+/**
+ * Format a date string as "Weekday, Month Day, Year"
+ * e.g. "Saturday, April 25, 2026"
+ */
+function formatDateHeading(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/**
+ * Get date key (YYYY-MM-DD) from an ISO timestamp
+ */
+function getDateKey(isoString) {
+  const d = new Date(isoString);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function formatDateTime(iso) {
   const d = new Date(iso);
@@ -40,19 +54,12 @@ function formatDateTime(iso) {
   });
 }
 
-function formatSeconds(s) {
-  if (!s && s !== 0) return "—";
-  return formatDurationLabel(Math.round(s));
-}
-
 export default function HistoryPage() {
   const { user } = useUser();
   const [tab, setTab] = useState("timers");
   const [timerHistory, setTimerHistory] = useState([]);
   const [activityLog, setActivityLog] = useState([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [sortField, setSortField] = useState("timestamp");
-  const [sortDir, setSortDir] = useState("desc");
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -72,37 +79,41 @@ export default function HistoryPage() {
 
   useEffect(() => { refreshData(); }, [refreshData]);
 
-  const sortedTimerHistory = [...timerHistory].sort((a, b) => {
-    let aVal, bVal;
-    if (sortField === "timestamp") {
-      aVal = new Date(a.timestamp).getTime();
-      bVal = new Date(b.timestamp).getTime();
-    } else if (sortField === "habitName") {
-      aVal = a.habitName?.toLowerCase() || "";
-      bVal = b.habitName?.toLowerCase() || "";
-      return sortDir === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    } else if (sortField === "targetDuration") {
-      aVal = a.targetDuration || 0;
-      bVal = b.targetDuration || 0;
-    } else if (sortField === "actualTime") {
-      aVal = a.actualTime || 0;
-      bVal = b.actualTime || 0;
-    } else if (sortField === "status") {
-      aVal = a.status || "";
-      bVal = b.status || "";
-      return sortDir === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-    return sortDir === "asc" ? aVal - bVal : bVal - aVal;
-  });
+  // ─── Group timer history by date, aggregate per task per day ───
+  const groupedHistory = useMemo(() => {
+    // Group entries by date → then by task name, summing actual time
+    const dateMap = {};
 
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("desc");
-    }
-  };
+    timerHistory.forEach((entry) => {
+      const dateKey = getDateKey(entry.timestamp);
+      if (!dateMap[dateKey]) {
+        dateMap[dateKey] = {};
+      }
+
+      const taskName = entry.habitName;
+      if (!dateMap[dateKey][taskName]) {
+        dateMap[dateKey][taskName] = {
+          habitName: taskName,
+          totalTime: 0,
+          entryIds: [],
+        };
+      }
+
+      dateMap[dateKey][taskName].totalTime += (entry.actualTime || 0);
+      dateMap[dateKey][taskName].entryIds.push(entry.id);
+    });
+
+    // Convert to sorted array: newest date first
+    const sortedDates = Object.keys(dateMap).sort((a, b) => b.localeCompare(a));
+
+    return sortedDates.map((dateKey) => ({
+      dateKey,
+      dateLabel: formatDateHeading(dateKey),
+      tasks: Object.values(dateMap[dateKey]).sort((a, b) =>
+        b.totalTime - a.totalTime // Most time spent first, 0s at bottom
+      ),
+    }));
+  }, [timerHistory]);
 
   const handleClear = async (target) => {
     if (target === "all") await clearAllHistory();
@@ -122,9 +133,15 @@ export default function HistoryPage() {
     setConfirmDeleteId(null);
   };
 
-  const sortIcon = (field) => {
-    if (sortField !== field) return "↕";
-    return sortDir === "asc" ? "↑" : "↓";
+  // Delete all entries for a task on a specific day
+  const handleDeleteDayTask = async (entryIds) => {
+    setDeletingId(entryIds[0]);
+    for (const id of entryIds) {
+      await deleteTimerHistoryEntry(id);
+    }
+    setTimerHistory((prev) => prev.filter((e) => !entryIds.includes(e.id)));
+    setDeletingId(null);
+    setConfirmDeleteId(null);
   };
 
   return (
@@ -163,81 +180,71 @@ export default function HistoryPage() {
             <div className="history-empty"><span className="history-empty-icon">⏳</span><p>Loading history…</p></div>
           )}
 
+          {/* ─── Timer History: Date-Grouped View ─── */}
           {!loading && tab === "timers" && (
             <div className="history-section">
-              {sortedTimerHistory.length === 0 ? (
+              {groupedHistory.length === 0 ? (
                 <div className="history-empty">
                   <span className="history-empty-icon">⏱</span>
                   <p>No timer sessions recorded yet.</p>
                   <p className="history-empty-sub">Start a timer from the Active Timer panel to see your sessions here.</p>
                 </div>
               ) : (
-                <div className="history-table-wrap">
-                  <table className="history-table">
-                    <thead>
-                      <tr>
-                        <th onClick={() => handleSort("habitName")} className="sortable">Habit {sortIcon("habitName")}</th>
-                        <th onClick={() => handleSort("targetDuration")} className="sortable">Target {sortIcon("targetDuration")}</th>
-                        <th onClick={() => handleSort("actualTime")} className="sortable">Actual {sortIcon("actualTime")}</th>
-                        <th onClick={() => handleSort("timestamp")} className="sortable">Date {sortIcon("timestamp")}</th>
-                        <th onClick={() => handleSort("status")} className="sortable">Status {sortIcon("status")}</th>
-                        <th className="history-actions-th"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedTimerHistory.map((entry) => {
-                        const st = STATUS_STYLES[entry.status] || STATUS_STYLES.partial;
-                        const pct = entry.targetDuration > 0
-                          ? Math.min(100, Math.round((entry.actualTime / entry.targetDuration) * 100))
-                          : 100;
-                        return (
-                          <tr key={entry.id} className={entry.status === "crossed" || entry.status === "incomplete" ? "history-row-missed" : ""}>
-                            <td className="history-cell-habit">
-                              <span className="history-habit-name">{entry.habitName}</span>
-                              {entry.isOpenEnded && <span className="history-open-tag">OPEN</span>}
-                            </td>
-                            <td>{formatSeconds(entry.targetDuration)}</td>
-                            <td>
-                              <div className="history-actual-cell">
-                                <span>{formatSeconds(entry.actualTime)}</span>
-                                {entry.extraTime > 0 && <span className="history-extra">+{formatSeconds(entry.extraTime)}</span>}
-                                {entry.targetDuration > 0 && (
-                                  <div className="history-progress-bar">
-                                    <div className="history-progress-fill" style={{ width: `${pct}%`, background: st.color }} />
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="history-cell-date">{formatDateTime(entry.timestamp)}</td>
-                            <td>
-                              <span className="history-status-badge" style={{ color: st.color, background: st.bg }}>
-                                <span className="history-status-icon">{st.icon}</span>
-                                {st.label}
-                                {entry.targetDuration > 0 && <span className="history-status-pct"> {pct}%</span>}
+                <div className="history-date-groups">
+                  {groupedHistory.map((group) => (
+                    <div key={group.dateKey} className="history-date-group">
+                      <div className="history-date-heading">
+                        <span className="history-date-dot" />
+                        <h3>{group.dateLabel}</h3>
+                      </div>
+                      <div className="history-task-list">
+                        {group.tasks.map((task) => {
+                          const taskKey = `${group.dateKey}_${task.habitName}`;
+                          return (
+                            <div key={taskKey} className="history-task-row">
+                              <span className="history-task-branch">└──</span>
+                              <span className="history-task-name">{task.habitName}</span>
+                              <span className="history-task-dots" />
+                              <span className={`history-task-time ${task.totalTime === 0 ? "zero" : ""}`}>
+                                {formatTimeClean(task.totalTime)}
                               </span>
-                            </td>
-                            <td className="history-cell-actions">
-                              {confirmDeleteId === entry.id ? (
-                                <span className="history-delete-confirm">
-                                  <button className="history-delete-yes" onClick={() => handleDeleteEntry(entry.id)} disabled={deletingId === entry.id} title="Confirm delete">
-                                    {deletingId === entry.id ? "…" : "✓"}
-                                  </button>
-                                  <button className="history-delete-no" onClick={() => setConfirmDeleteId(null)} title="Cancel">✕</button>
-                                </span>
-                              ) : (
-                                <button className="history-delete-btn" onClick={() => setConfirmDeleteId(entry.id)} title="Delete this entry">🗑</button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              <span className="history-task-actions">
+                                {confirmDeleteId === taskKey ? (
+                                  <span className="history-delete-confirm">
+                                    <button
+                                      className="history-delete-yes"
+                                      onClick={() => handleDeleteDayTask(task.entryIds)}
+                                      disabled={deletingId === task.entryIds[0]}
+                                      title="Confirm delete"
+                                    >
+                                      {deletingId === task.entryIds[0] ? "…" : "✓"}
+                                    </button>
+                                    <button
+                                      className="history-delete-no"
+                                      onClick={() => setConfirmDeleteId(null)}
+                                      title="Cancel"
+                                    >✕</button>
+                                  </span>
+                                ) : (
+                                  <button
+                                    className="history-delete-btn"
+                                    onClick={() => setConfirmDeleteId(taskKey)}
+                                    title="Delete this entry"
+                                  >🗑</button>
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           )}
 
+          {/* ─── Activity Log ─── */}
           {!loading && tab === "activity" && (
             <div className="history-section">
               {activityLog.length === 0 ? (

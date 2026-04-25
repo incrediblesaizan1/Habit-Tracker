@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { parseTimeDuration } from "../lib/timeParser";
-import { logTimerEvent, logActivity } from "../lib/activityLogger";
+import { parseTimeDuration, formatTimeClean } from "../lib/timeParser";
+import { logTimerEvent, logActivity, logDailySnapshot } from "../lib/activityLogger";
 
 // ─── Constants ───
 const MODAL_STATE_KEY = "sk_timerModal";
@@ -18,16 +18,10 @@ function getTodayKey() {
 
 /**
  * Format total seconds into display string.
+ * Uses clean Xh Ym Zs format, omitting zero-value leading units.
  */
-function formatTime(seconds, useHours = false) {
-  const abs = Math.abs(Math.floor(seconds));
-  const h = Math.floor(abs / 3600);
-  const m = Math.floor((abs % 3600) / 60);
-  const s = abs % 60;
-  if (useHours || h > 0) {
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+function formatTime(seconds) {
+  return formatTimeClean(seconds);
 }
 
 /**
@@ -526,18 +520,67 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
   const processedRef = useRef(new Set());
   // Track the current day so we can detect midnight transitions
   const currentDayRef = useRef(getTodayKey());
+  // Track whether we've already sent a daily snapshot for a given date
+  const snapshotSentRef = useRef(new Set());
 
   useEffect(() => {
     if (!habits || !setDayStatus || !serverStates) return;
 
     const runCheck = () => {
       const today = getTodayKey();
+      const dayChanged = currentDayRef.current !== today;
 
       // If the day has changed since last check, reset processed set
       // so we can re-evaluate any stale timers
-      if (currentDayRef.current !== today) {
+      if (dayChanged) {
+        const previousDay = currentDayRef.current;
         processedRef.current = new Set();
         currentDayRef.current = today;
+
+        // ── Daily Snapshot: log ALL habits for the previous day ──
+        if (!snapshotSentRef.current.has(previousDay)) {
+          snapshotSentRef.current.add(previousDay);
+
+          const snapshotEntries = habits.map((h) => {
+            const serverState = serverStates[h.id];
+            let actualTime = 0;
+
+            if (serverState && serverState.timerDate === previousDay) {
+              actualTime = serverState.elapsedBeforePause || 0;
+              if (serverState.isRunning && serverState.startedAt > 0) {
+                const parts = previousDay.split("-");
+                if (parts.length === 3) {
+                  const endOfDay = new Date(
+                    parseInt(parts[0], 10),
+                    parseInt(parts[1], 10) - 1,
+                    parseInt(parts[2], 10),
+                    23, 59, 59, 999
+                  ).getTime();
+                  const runEnd = Math.min(endOfDay, Date.now());
+                  actualTime += Math.max(0, (runEnd - serverState.startedAt) / 1000);
+                }
+              }
+              // Include stopwatch extra time
+              if (serverState.phase === "stopwatch") {
+                const swTime = serverState.stopwatchTime || 0;
+                actualTime = (serverState.totalSeconds || 0) + swTime;
+                if (serverState.isRunning && serverState.startedAt > 0) {
+                  actualTime += Math.max(0, (Date.now() - serverState.startedAt) / 1000);
+                }
+              }
+            }
+
+            const info = parseTimeDuration(h.name);
+            return {
+              habitName: h.name,
+              actualTime: Math.round(actualTime),
+              targetDuration: info.detected ? info.totalSeconds : 0,
+            };
+          });
+
+          logDailySnapshot(snapshotEntries, previousDay);
+          logActivity({ action: "timer_reset", habitName: "All Tasks", detail: `Daily snapshot saved for ${previousDay}` });
+        }
       }
 
       const staleHabitIds = [];
@@ -562,8 +605,6 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
           // Calculate actual time spent — include running segment if timer was active
           let actualElapsed = serverState.elapsedBeforePause || 0;
           if (serverState.isRunning && serverState.startedAt > 0) {
-            // Timer was still running when day changed;
-            // calculate how much time passed since startedAt until end of timerDate day (23:59:59)
             const parts = timerDate.split("-");
             if (parts.length === 3) {
               const endOfDay = new Date(
@@ -572,7 +613,6 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
                 parseInt(parts[2], 10),
                 23, 59, 59, 999
               ).getTime();
-              // Cap the running segment to end-of-day so we don't over-count
               const runEnd = Math.min(endOfDay, Date.now());
               const runningSegment = Math.max(0, (runEnd - serverState.startedAt) / 1000);
               actualElapsed += runningSegment;
@@ -582,12 +622,10 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
           const serverTotalSec = serverState.totalSeconds || info.totalSeconds || 0;
 
           if (!wasCompleted) {
-            // Timer was started/running on a previous day but NOT completed → mark as crossed
             const parts = timerDate.split("-");
             if (parts.length === 3) {
               const timerDay = parseInt(parts[2], 10);
               if (timerDay > 0) {
-                // Only cross if not already completed for that day
                 if (!isDayCompleted || !isDayCompleted(h.id, timerDay)) {
                   setDayStatus(h.id, timerDay, "crossed");
                   logActivity({
@@ -595,38 +633,8 @@ function useMidnightCheck(habits, setDayStatus, isDayCompleted, serverStates) {
                     habitName: h.name,
                     detail: `Auto-crossed for ${timerDate} (timer incomplete)`,
                   });
-
-                  // Log timer history so the actual time spent is recorded
-                  if (actualElapsed > 0) {
-                    logTimerEvent({
-                      habitName: h.name,
-                      targetDuration: serverTotalSec,
-                      actualTime: Math.round(Math.min(actualElapsed, serverTotalSec)),
-                      status: "crossed",
-                      isOpenEnded: info.isOpenEnded || false,
-                      extraTime: 0,
-                    });
-                  }
                 }
               }
-            }
-          } else {
-            // Timer was completed — still record final history if not already done
-            // (e.g., open-ended timers that were still running in stopwatch mode)
-            if (actualElapsed > 0 && serverState.phase === "stopwatch") {
-              const swTime = serverState.stopwatchTime || 0;
-              let swActual = swTime;
-              if (serverState.isRunning && serverState.startedAt > 0) {
-                swActual += Math.max(0, (Date.now() - serverState.startedAt) / 1000);
-              }
-              logTimerEvent({
-                habitName: h.name,
-                targetDuration: serverTotalSec,
-                actualTime: Math.round(serverTotalSec + swActual),
-                status: "exceeded",
-                isOpenEnded: true,
-                extraTime: Math.round(swActual),
-              });
             }
           }
 
@@ -932,7 +940,6 @@ function TimerWithSharedState({
   serverStates
 }) {
   const timer = useTimerState(totalSeconds, isOpenEnded, habit.name, habit.id, onComplete, serverStates);
-  const useHours = totalSeconds >= 3600;
 
   // When Start is clicked: start timer AND open modal
   const handleStart = useCallback(() => {
@@ -950,7 +957,6 @@ function TimerWithSharedState({
         isOpenEnded={isOpenEnded}
         singleHabit={singleHabit}
         timer={timer}
-        useHours={useHours}
         onStart={handleStart}
         onModalOpen={onModalOpen}
         isCustom={isCustom}
@@ -963,7 +969,6 @@ function TimerWithSharedState({
           label={label}
           isOpenEnded={isOpenEnded}
           timer={timer}
-          useHours={useHours}
           onMinimize={onMinimize}
         />,
         document.body
@@ -977,7 +982,7 @@ function TimerWithSharedState({
 // ═══════════════════════════════════════════
 function HorizontalTimerDisplay({
   habit, totalSeconds, label, isOpenEnded, singleHabit,
-  timer, useHours, onStart, onModalOpen, isCustom, onRemoveCustom
+  timer, onStart, onModalOpen, isCustom, onRemoveCustom
 }) {
   const RING_R = 24;
   const RING_CIRC = 2 * Math.PI * RING_R;
@@ -1044,8 +1049,8 @@ function HorizontalTimerDisplay({
         <div className="atb-time-block">
           <span className="atb-time-display">
             {timer.phase === "stopwatch"
-              ? formatTime(timer.stopwatchTime, useHours)
-              : formatTime(timer.remaining, useHours)}
+              ? formatTime(timer.stopwatchTime)
+              : formatTime(timer.remaining)}
           </span>
           <span className="atb-time-sub">{timeSub}</span>
         </div>
@@ -1054,7 +1059,7 @@ function HorizontalTimerDisplay({
       {phaseBadge && <span className={`atb-phase-badge ${stateClass}`}>{phaseBadge}</span>}
 
       {timer.phase === "stopwatch" && (
-        <span className="atb-extra-info">🎯 +{formatTime(timer.stopwatchTime, useHours)}</span>
+        <span className="atb-extra-info">🎯 +{formatTime(timer.stopwatchTime)}</span>
       )}
 
       <div className="atb-controls">
@@ -1088,7 +1093,7 @@ function HorizontalTimerDisplay({
 // ─── Timer Modal (full-screen overlay) ───
 // Now receives timer state from parent instead of creating its own
 // ═══════════════════════════════════════════
-function TimerModal({ habit, totalSeconds, label, isOpenEnded, timer, useHours, onMinimize }) {
+function TimerModal({ habit, totalSeconds, label, isOpenEnded, timer, onMinimize }) {
   const RING_R = 78;
   const RING_CIRC = 2 * Math.PI * RING_R;
   const ringOffset = Math.max(0, RING_CIRC - (timer.progress / 100) * RING_CIRC);
@@ -1162,8 +1167,8 @@ function TimerModal({ habit, totalSeconds, label, isOpenEnded, timer, useHours, 
             <div className="timer-modal-ring-text">
               <span className="timer-modal-time">
                 {timer.phase === "stopwatch"
-                  ? formatTime(timer.stopwatchTime, useHours)
-                  : formatTime(timer.remaining, useHours)}
+                  ? formatTime(timer.stopwatchTime)
+                  : formatTime(timer.remaining)}
               </span>
               <span className="timer-modal-time-sub">
                 {timer.phase === "stopwatch" ? "EXTRA TIME" : "REMAINING"}
@@ -1284,7 +1289,7 @@ function AddTimerModal({ onAdd, onClose }) {
 
           {totalSeconds > 0 && (
             <div className="add-timer-preview">
-              Total: {formatTime(totalSeconds, totalSeconds >= 3600)}
+              Total: {formatTime(totalSeconds)}
             </div>
           )}
 
@@ -1323,12 +1328,7 @@ function AddTimerModal({ onAdd, onClose }) {
 }
 
 
-// Helper: format duration label (local copy to avoid circular dependency)
+// Helper: format duration label (delegates to canonical formatTimeClean)
 function formatDurationLabel(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
-  if (m > 0) return `${m}m ${String(s).padStart(2, "0")}s`;
-  return `${s}s`;
+  return formatTimeClean(seconds);
 }

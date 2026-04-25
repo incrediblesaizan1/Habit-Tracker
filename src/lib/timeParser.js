@@ -91,19 +91,28 @@ export function parseTimeDuration(text) {
 }
 
 /**
- * Format seconds into a human-readable label.
- * e.g. 3600 → "1h 00m 00s", 90 → "1m 30s"
+ * Format seconds into a human-readable label (omits zero-value leading units).
+ * e.g. 3600 → "1h", 3661 → "1h 1m 1s", 90 → "1m 30s", 0 → "0s"
+ * Never shows decimals — always whole seconds.
  */
 export function formatDurationLabel(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
+  return formatTimeClean(seconds);
+}
 
-  if (h > 0) {
-    return `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
-  }
-  if (m > 0) {
-    return `${m}m ${String(s).padStart(2, "0")}s`;
-  }
-  return `${s}s`;
+/**
+ * Canonical time display: Xh Ym Zs format.
+ * Omits zero-value units (e.g. 5m 12s, not 0h 5m 12s).
+ * 0 → "0s", 65 → "1m 5s", 3661 → "1h 1m 1s"
+ */
+export function formatTimeClean(totalSeconds) {
+  const abs = Math.abs(Math.floor(totalSeconds || 0));
+  const h = Math.floor(abs / 3600);
+  const m = Math.floor((abs % 3600) / 60);
+  const s = abs % 60;
+
+  const parts = [];
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+  return parts.join(" ");
 }
