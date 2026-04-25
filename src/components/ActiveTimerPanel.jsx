@@ -26,13 +26,10 @@ function formatTime(seconds) {
 
 /**
  * Get progress bar color class based on percentage.
- * 0-39% red, 40-74% amber, 75-99% teal, 100% green
+ * Red for incomplete, green for complete.
  */
 function getProgressColor(pct) {
-  if (pct >= 100) return "progress-green";
-  if (pct >= 75) return "progress-teal";
-  if (pct >= 40) return "progress-amber";
-  return "progress-red";
+  return pct >= 100 ? "progress-green" : "progress-red";
 }
 
 /**
@@ -46,6 +43,7 @@ function TimerProgressBar({ timeSpent, totalSeconds }) {
     <div className="timer-progress-wrap">
       <div className="timer-progress-labels">
         <span className="timer-progress-spent">{formatTime(timeSpent)}</span>
+        <span className="timer-progress-divider">/</span>
         <span className="timer-progress-target">{formatTime(totalSeconds)}</span>
       </div>
       <div className="timer-progress-track">

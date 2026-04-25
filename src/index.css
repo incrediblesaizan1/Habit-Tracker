@@ -1419,15 +1419,14 @@ body {
 
 .timer-modal-card {
   position: relative;
-  width: 420px;
-  height: 340px;
+  width: 440px;
   max-width: calc(100vw - 32px);
   max-height: 90vh;
   overflow-y: auto;
-  background: #0f1923; /* Dark card color */
+  background: #0f1923;
   border: 1px solid rgba(0, 212, 170, 0.2);
   border-radius: 20px;
-  padding: 24px;
+  padding: 28px 24px;
   box-shadow: 0 0 32px rgba(0, 212, 170, 0.25);
   display: flex;
   flex-direction: column;
@@ -1641,18 +1640,24 @@ body {
 /* ─── Timer Progress Bar (shared between bar + modal) ─── */
 .timer-progress-wrap {
   width: 100%;
-  padding: 8px 0 2px;
+  padding: 2px 0 0;
 }
 .timer-progress-labels {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: baseline;
-  margin-bottom: 5px;
+  gap: 6px;
+  margin-bottom: 3px;
 }
 .timer-progress-spent {
   font-size: 11px;
   font-weight: 700;
   color: var(--text-secondary);
+}
+.timer-progress-divider {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.5;
 }
 .timer-progress-target {
   font-size: 10px;
@@ -1675,37 +1680,34 @@ body {
 .timer-progress-fill.progress-red {
   background: linear-gradient(90deg, #ef4444, #f87171);
 }
-.timer-progress-fill.progress-amber {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
-}
-.timer-progress-fill.progress-teal {
-  background: linear-gradient(90deg, #14b8a6, #2dd4bf);
-}
 .timer-progress-fill.progress-green {
   background: linear-gradient(90deg, #22c55e, #4ade80);
 }
 
 /* Progress bar inside the timer row */
 .atb-timer-row .timer-progress-wrap {
-  padding: 6px 12px 4px;
+  padding: 2px 12px 4px;
   flex-basis: 100%;
 }
 
 /* Progress bar inside the modal */
 .timer-modal-progress {
-  padding: 0 24px 8px;
+  padding: 4px 32px 12px;
 }
 .timer-modal-progress .timer-progress-wrap {
-  padding: 4px 0;
+  padding: 0;
 }
 .timer-modal-progress .timer-progress-track {
   height: 6px;
 }
-.timer-modal-progress .timer-progress-labels .timer-progress-spent {
+.timer-modal-progress .timer-progress-spent {
   font-size: 13px;
 }
-.timer-modal-progress .timer-progress-labels .timer-progress-target {
-  font-size: 11px;
+.timer-modal-progress .timer-progress-target {
+  font-size: 12px;
+}
+.timer-modal-progress .timer-progress-divider {
+  font-size: 12px;
 }
 
 /* ─── Add Timer Button ─── */
@@ -2183,6 +2185,12 @@ body {
   height: 1px;
   border-bottom: 1px dotted rgba(255, 255, 255, 0.12);
   margin: 0 4px;
+}
+.history-task-dots.dots-red {
+  border-bottom-color: rgba(239, 68, 68, 0.5);
+}
+.history-task-dots.dots-green {
+  border-bottom-color: rgba(34, 197, 94, 0.5);
 }
 
 /* Time display */

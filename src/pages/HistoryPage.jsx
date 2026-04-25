@@ -78,10 +78,7 @@ function getDayDotClass(tasks) {
  * Get progress bar color class.
  */
 function getProgressColor(pct) {
-  if (pct >= 100) return "progress-green";
-  if (pct >= 75) return "progress-teal";
-  if (pct >= 40) return "progress-amber";
-  return "progress-red";
+  return pct >= 100 ? "progress-green" : "progress-red";
 }
 
 export default function HistoryPage() {
@@ -246,18 +243,10 @@ export default function HistoryPage() {
                             <div key={taskKey} className="history-task-row">
                               <span className="history-task-branch">└──</span>
                               <span className="history-task-name">{task.habitName}</span>
-                              <span className="history-task-dots" />
+                              <span className={`history-task-dots ${taskPct >= 100 ? "dots-green" : "dots-red"}`} />
                               <span className={`history-task-time ${task.totalTime === 0 ? "zero" : ""}`}>
                                 {formatTimeClean(task.totalTime)}
                               </span>
-                              {task.targetDuration > 0 && (
-                                <div className="history-task-bar">
-                                  <div
-                                    className={`history-task-bar-fill ${getProgressColor(taskPct)}`}
-                                    style={{ width: `${taskPct}%` }}
-                                  />
-                                </div>
-                              )}
                               <span className="history-task-actions">
                                 {confirmDeleteId === taskKey ? (
                                   <span className="history-delete-confirm">
