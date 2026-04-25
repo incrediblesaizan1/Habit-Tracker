@@ -3,27 +3,10 @@ import { Link } from "react-router-dom";
 import { useUser, UserButton } from "@clerk/clerk-react";
 import {
   getTimerHistory,
-  getActivityLog,
-  clearAllHistory,
   clearTimerHistory,
-  clearActivityLog,
   deleteTimerHistoryEntry,
 } from "../lib/activityLogger";
 import { formatTimeClean } from "../lib/timeParser";
-
-const ACTION_LABELS = {
-  habit_checked: { icon: "✓", label: "Habit Checked", color: "var(--accent)" },
-  habit_unchecked: { icon: "○", label: "Habit Unchecked", color: "var(--text-muted)" },
-  habit_created: { icon: "+", label: "Habit Created", color: "var(--green)" },
-  habit_deleted: { icon: "✕", label: "Habit Deleted", color: "var(--red)" },
-  timer_started: { icon: "▶", label: "Timer Started", color: "var(--accent)" },
-  timer_paused: { icon: "⏸", label: "Timer Paused", color: "var(--orange)" },
-  timer_reset: { icon: "↺", label: "Timer Reset", color: "var(--text-muted)" },
-  timer_completed: { icon: "🏁", label: "Timer Completed", color: "var(--green)" },
-  timer_goal_reached: { icon: "🎯", label: "Goal Reached", color: "var(--green)" },
-  timer_stopped: { icon: "⏹", label: "Timer Stopped", color: "var(--orange)" },
-  timer_auto_crossed: { icon: "❌", label: "Auto-Crossed", color: "var(--red)" },
-};
 
 /**
  * Format a date string as "Weekday, Month Day, Year"
@@ -45,13 +28,6 @@ function formatDateHeading(dateStr) {
 function getDateKey(isoString) {
   const d = new Date(isoString);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function formatDateTime(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString("en-US", {
-    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
 }
 
 /**
@@ -83,9 +59,7 @@ function getProgressColor(pct) {
 
 export default function HistoryPage() {
   const { user } = useUser();
-  const [tab, setTab] = useState("timers");
   const [timerHistory, setTimerHistory] = useState([]);
-  const [activityLog, setActivityLog] = useState([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
@@ -94,12 +68,10 @@ export default function HistoryPage() {
   const refreshData = useCallback(async () => {
     setLoading(true);
     try {
-      const [history, logs] = await Promise.all([getTimerHistory(), getActivityLog()]);
+      const history = await getTimerHistory();
       setTimerHistory(history);
-      setActivityLog(logs);
     } catch {
       setTimerHistory([]);
-      setActivityLog([]);
     }
     setLoading(false);
   }, []);
@@ -151,10 +123,8 @@ export default function HistoryPage() {
     });
   }, [timerHistory]);
 
-  const handleClear = async (target) => {
-    if (target === "all") await clearAllHistory();
-    else if (target === "timers") await clearTimerHistory();
-    else if (target === "activity") await clearActivityLog();
+  const handleClear = async () => {
+    await clearTimerHistory();
     await refreshData();
     setShowClearConfirm(false);
   };
@@ -200,13 +170,9 @@ export default function HistoryPage() {
 
         <div className="history-page">
           <div className="history-tabs">
-            <button className={`history-tab ${tab === "timers" ? "active" : ""}`} onClick={() => setTab("timers")}>
+            <button className="history-tab active">
               <span className="history-tab-icon">⏱</span> Timer History
               {timerHistory.length > 0 && <span className="history-tab-count">{timerHistory.length}</span>}
-            </button>
-            <button className={`history-tab ${tab === "activity" ? "active" : ""}`} onClick={() => setTab("activity")}>
-              <span className="history-tab-icon">📋</span> Activity Log
-              {activityLog.length > 0 && <span className="history-tab-count">{activityLog.length}</span>}
             </button>
             <div className="history-tab-spacer" />
             <button className="history-clear-btn" onClick={() => setShowClearConfirm(true)}>🗑 Clear History</button>
@@ -217,7 +183,7 @@ export default function HistoryPage() {
           )}
 
           {/* ─── Timer History: Date-Grouped View ─── */}
-          {!loading && tab === "timers" && (
+          {!loading && (
             <div className="history-section">
               {groupedHistory.length === 0 ? (
                 <div className="history-empty">
@@ -287,36 +253,6 @@ export default function HistoryPage() {
               )}
             </div>
           )}
-
-          {/* ─── Activity Log ─── */}
-          {!loading && tab === "activity" && (
-            <div className="history-section">
-              {activityLog.length === 0 ? (
-                <div className="history-empty">
-                  <span className="history-empty-icon">📋</span>
-                  <p>No activity recorded yet.</p>
-                  <p className="history-empty-sub">Activities like timer starts, pauses, resets, and completions will appear here.</p>
-                </div>
-              ) : (
-                <div className="activity-log-list">
-                  {activityLog.map((entry) => {
-                    const info = ACTION_LABELS[entry.action] || { icon: "•", label: entry.action, color: "var(--text-muted)" };
-                    return (
-                      <div key={entry.id} className="activity-log-item">
-                        <span className="activity-icon" style={{ color: info.color }}>{info.icon}</span>
-                        <div className="activity-info">
-                          <span className="activity-action">{info.label}</span>
-                          <span className="activity-habit">{entry.habitName}</span>
-                          {entry.detail && <span className="activity-detail">{entry.detail}</span>}
-                        </div>
-                        <span className="activity-time">{formatDateTime(entry.timestamp)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {showClearConfirm && (
@@ -324,17 +260,11 @@ export default function HistoryPage() {
             <div className="modal-card history-clear-modal" onClick={(e) => e.stopPropagation()}>
               <h2 className="modal-title">Clear History</h2>
               <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "20px" }}>
-                This action cannot be undone. Choose what to clear:
+                This action cannot be undone.
               </p>
               <div className="history-clear-options">
-                <button className="history-clear-option" onClick={() => handleClear("timers")}>
-                  <span>⏱</span> Clear Timer History <span className="history-clear-count">({timerHistory.length})</span>
-                </button>
-                <button className="history-clear-option" onClick={() => handleClear("activity")}>
-                  <span>📋</span> Clear Activity Log <span className="history-clear-count">({activityLog.length})</span>
-                </button>
-                <button className="history-clear-option danger" onClick={() => handleClear("all")}>
-                  <span>🗑</span> Clear Everything
+                <button className="history-clear-option danger" onClick={handleClear}>
+                  <span>🗑</span> Clear All Timer History <span className="history-clear-count">({timerHistory.length})</span>
                 </button>
               </div>
               <button className="btn-cancel" onClick={() => setShowClearConfirm(false)} style={{ marginTop: "12px", width: "100%" }}>Cancel</button>
