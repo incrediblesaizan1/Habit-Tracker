@@ -1098,7 +1098,6 @@ body {
   gap: 16px;
   flex: 1;
   min-width: 0;
-  flex-wrap: wrap;
 }
 
 /* Habit label (shown when single habit = no tabs) */
@@ -1686,11 +1685,6 @@ body {
   background: linear-gradient(90deg, #22c55e, #4ade80);
 }
 
-/* Progress bar inside the timer row */
-.atb-timer-row .timer-progress-wrap {
-  padding: 2px 12px 4px;
-  flex-basis: 100%;
-}
 
 /* Progress bar inside the modal */
 .timer-modal-progress {

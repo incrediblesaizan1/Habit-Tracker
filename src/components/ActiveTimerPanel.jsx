@@ -18,17 +18,14 @@ function getTodayKey() {
 
 /**
  * Format total seconds into colon display string.
- * H:MM:SS when hours > 0, otherwise M:SS.
+ * Always HH:MM:SS with zero-padded values.
  */
 function formatTime(seconds) {
   const totalSec = Math.max(0, Math.floor(seconds));
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${m}:${String(s).padStart(2, "0")}`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 /**
@@ -1123,12 +1120,6 @@ function HorizontalTimerDisplay({
           <span>Reset</span>
         </button>
       </div>
-
-      {/* Progress Bar */}
-      <TimerProgressBar
-        timeSpent={totalSeconds - timer.remaining}
-        totalSeconds={totalSeconds}
-      />
     </div>
   );
 }
