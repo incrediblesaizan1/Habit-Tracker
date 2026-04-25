@@ -54,6 +54,36 @@ function formatDateTime(iso) {
   });
 }
 
+/**
+ * Get day dot CSS class based on aggregate daily progress.
+ * gray: no activity, amber: <50%, teal: 50-99%, green: 100%
+ */
+function getDayDotClass(tasks) {
+  const withTarget = tasks.filter(t => t.targetDuration > 0);
+  if (withTarget.length === 0) {
+    // No target-based tasks — check if any time was logged
+    const anyTime = tasks.some(t => t.totalTime > 0);
+    return anyTime ? "dot-teal" : "dot-gray";
+  }
+  const totalTarget = withTarget.reduce((sum, t) => sum + t.targetDuration, 0);
+  const totalSpent = withTarget.reduce((sum, t) => sum + Math.min(t.totalTime, t.targetDuration), 0);
+  const pct = totalTarget > 0 ? (totalSpent / totalTarget) * 100 : 0;
+  if (pct >= 100) return "dot-green";
+  if (pct >= 50) return "dot-teal";
+  if (pct > 0) return "dot-amber";
+  return "dot-gray";
+}
+
+/**
+ * Get progress bar color class.
+ */
+function getProgressColor(pct) {
+  if (pct >= 100) return "progress-green";
+  if (pct >= 75) return "progress-teal";
+  if (pct >= 40) return "progress-amber";
+  return "progress-red";
+}
+
 export default function HistoryPage() {
   const { user } = useUser();
   const [tab, setTab] = useState("timers");
@@ -95,24 +125,33 @@ export default function HistoryPage() {
         dateMap[dateKey][taskName] = {
           habitName: taskName,
           totalTime: 0,
+          targetDuration: entry.targetDuration || 0,
           entryIds: [],
         };
       }
 
       dateMap[dateKey][taskName].totalTime += (entry.actualTime || 0);
+      // Keep the highest target duration seen for this task
+      if ((entry.targetDuration || 0) > dateMap[dateKey][taskName].targetDuration) {
+        dateMap[dateKey][taskName].targetDuration = entry.targetDuration;
+      }
       dateMap[dateKey][taskName].entryIds.push(entry.id);
     });
 
     // Convert to sorted array: newest date first
     const sortedDates = Object.keys(dateMap).sort((a, b) => b.localeCompare(a));
 
-    return sortedDates.map((dateKey) => ({
-      dateKey,
-      dateLabel: formatDateHeading(dateKey),
-      tasks: Object.values(dateMap[dateKey]).sort((a, b) =>
-        b.totalTime - a.totalTime // Most time spent first, 0s at bottom
-      ),
-    }));
+    return sortedDates.map((dateKey) => {
+      const tasks = Object.values(dateMap[dateKey]).sort((a, b) =>
+        b.totalTime - a.totalTime
+      );
+      return {
+        dateKey,
+        dateLabel: formatDateHeading(dateKey),
+        tasks,
+        dotClass: getDayDotClass(tasks),
+      };
+    });
   }, [timerHistory]);
 
   const handleClear = async (target) => {
@@ -194,12 +233,15 @@ export default function HistoryPage() {
                   {groupedHistory.map((group) => (
                     <div key={group.dateKey} className="history-date-group">
                       <div className="history-date-heading">
-                        <span className="history-date-dot" />
+                        <span className={`history-date-dot ${group.dotClass}`} />
                         <h3>{group.dateLabel}</h3>
                       </div>
                       <div className="history-task-list">
                         {group.tasks.map((task) => {
                           const taskKey = `${group.dateKey}_${task.habitName}`;
+                          const taskPct = task.targetDuration > 0
+                            ? Math.min(100, Math.round((task.totalTime / task.targetDuration) * 100))
+                            : (task.totalTime > 0 ? 100 : 0);
                           return (
                             <div key={taskKey} className="history-task-row">
                               <span className="history-task-branch">└──</span>
@@ -208,6 +250,14 @@ export default function HistoryPage() {
                               <span className={`history-task-time ${task.totalTime === 0 ? "zero" : ""}`}>
                                 {formatTimeClean(task.totalTime)}
                               </span>
+                              {task.targetDuration > 0 && (
+                                <div className="history-task-bar">
+                                  <div
+                                    className={`history-task-bar-fill ${getProgressColor(taskPct)}`}
+                                    style={{ width: `${taskPct}%` }}
+                                  />
+                                </div>
+                              )}
                               <span className="history-task-actions">
                                 {confirmDeleteId === taskKey ? (
                                   <span className="history-delete-confirm">

@@ -25,6 +25,40 @@ function formatTime(seconds) {
 }
 
 /**
+ * Get progress bar color class based on percentage.
+ * 0-39% red, 40-74% amber, 75-99% teal, 100% green
+ */
+function getProgressColor(pct) {
+  if (pct >= 100) return "progress-green";
+  if (pct >= 75) return "progress-teal";
+  if (pct >= 40) return "progress-amber";
+  return "progress-red";
+}
+
+/**
+ * Reusable progress bar: target vs completed time.
+ */
+function TimerProgressBar({ timeSpent, totalSeconds }) {
+  if (totalSeconds <= 0) return null;
+  const pct = Math.min(100, (timeSpent / totalSeconds) * 100);
+  const colorClass = getProgressColor(pct);
+  return (
+    <div className="timer-progress-wrap">
+      <div className="timer-progress-labels">
+        <span className="timer-progress-spent">{formatTime(timeSpent)}</span>
+        <span className="timer-progress-target">{formatTime(totalSeconds)}</span>
+      </div>
+      <div className="timer-progress-track">
+        <div
+          className={`timer-progress-fill ${colorClass}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
  * Play a 3-tone chime via Web Audio API.
  */
 function playChime() {
@@ -1084,6 +1118,12 @@ function HorizontalTimerDisplay({
           <span>Reset</span>
         </button>
       </div>
+
+      {/* Progress Bar */}
+      <TimerProgressBar
+        timeSpent={totalSeconds - timer.remaining}
+        totalSeconds={totalSeconds}
+      />
     </div>
   );
 }
@@ -1175,6 +1215,14 @@ function TimerModal({ habit, totalSeconds, label, isOpenEnded, timer, onMinimize
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="timer-modal-progress">
+          <TimerProgressBar
+            timeSpent={totalSeconds - timer.remaining}
+            totalSeconds={totalSeconds}
+          />
         </div>
 
         {/* Controls */}
