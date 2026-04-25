@@ -2178,19 +2178,27 @@ body {
   max-width: 280px;
 }
 
-/* Dotted leader line */
-.history-task-dots {
+/* Thick progress bar between name and time */
+.history-task-progress {
   flex: 1;
-  min-width: 20px;
-  height: 1px;
-  border-bottom: 1px dotted rgba(255, 255, 255, 0.12);
-  margin: 0 4px;
+  min-width: 40px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 100px;
+  overflow: hidden;
+  margin: 0 8px;
 }
-.history-task-dots.dots-red {
-  border-bottom-color: rgba(239, 68, 68, 0.5);
+.history-task-progress-fill {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 0.4s ease;
+  min-width: 1px;
 }
-.history-task-dots.dots-green {
-  border-bottom-color: rgba(34, 197, 94, 0.5);
+.history-task-progress-fill.fill-red {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+.history-task-progress-fill.fill-green {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
 }
 
 /* Time display */

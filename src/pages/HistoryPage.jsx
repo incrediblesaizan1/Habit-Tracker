@@ -243,7 +243,12 @@ export default function HistoryPage() {
                             <div key={taskKey} className="history-task-row">
                               <span className="history-task-branch">└──</span>
                               <span className="history-task-name">{task.habitName}</span>
-                              <span className={`history-task-dots ${taskPct >= 100 ? "dots-green" : "dots-red"}`} />
+                              <div className="history-task-progress">
+                                <div
+                                  className={`history-task-progress-fill ${taskPct >= 100 ? "fill-green" : "fill-red"}`}
+                                  style={{ width: `${taskPct}%` }}
+                                />
+                              </div>
                               <span className={`history-task-time ${task.totalTime === 0 ? "zero" : ""}`}>
                                 {formatTimeClean(task.totalTime)}
                               </span>
