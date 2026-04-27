@@ -1130,7 +1130,7 @@ function HorizontalTimerDisplay({
 // Now receives timer state from parent instead of creating its own
 // ═══════════════════════════════════════════
 function TimerModal({ habit, totalSeconds, label, isOpenEnded, timer, onMinimize }) {
-  const RING_R = 78;
+  const RING_R = 100;
   const RING_CIRC = 2 * Math.PI * RING_R;
   const ringOffset = Math.max(0, RING_CIRC - (timer.progress / 100) * RING_CIRC);
 
@@ -1195,9 +1195,9 @@ function TimerModal({ habit, totalSeconds, label, isOpenEnded, timer, onMinimize
         {/* Ring Area */}
         <div className="timer-modal-ring-area">
           <div className="timer-modal-ring-wrap">
-            <svg width="180" height="180" viewBox="0 0 180 180">
-              <circle className="atb-ring-bg" cx="90" cy="90" r={RING_R} strokeWidth="6" fill="none" />
-              <circle className="atb-ring-progress" cx="90" cy="90" r={RING_R} strokeWidth="6" fill="none"
+            <svg width="220" height="220" viewBox="0 0 220 220">
+              <circle className="atb-ring-bg" cx="110" cy="110" r={RING_R} strokeWidth="6" fill="none" />
+              <circle className="atb-ring-progress" cx="110" cy="110" r={RING_R} strokeWidth="6" fill="none"
                 strokeDasharray={RING_CIRC} strokeDashoffset={ringOffset} strokeLinecap="round" />
             </svg>
             <div className="timer-modal-ring-text">
