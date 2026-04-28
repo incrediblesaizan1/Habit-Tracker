@@ -219,6 +219,9 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
   goalReachedRef.current = goalReached;
   const completionFiredRef = useRef(false);
   const midnightResetDoneRef = useRef(false);
+  // Track how much actualTime has already been logged to history for this session
+  // to avoid double-counting when pause/reset/stop all log history
+  const loggedActualTimeRef = useRef(0);
 
   // ── Compute current elapsed seconds from timestamps ──
   const computeElapsed = useCallback(() => {
@@ -238,7 +241,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
         const wasRunning = isRunning;
         const elapsed = computeElapsed();
 
-        // Log history for any time spent before midnight
+        // Log history for any unlogged time spent before midnight
         if (elapsed > 0) {
           const swTime = phase === "stopwatch"
             ? stopwatchTime + (wasRunning && startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0)
@@ -247,14 +250,17 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
             ? Math.min(elapsed, totalSeconds)
             : totalSeconds + swTime;
 
+          const delta = actualTime - loggedActualTimeRef.current;
           let status = "incomplete";
           if (goalReachedRef.current && swTime > 0) status = "exceeded";
           else if (goalReachedRef.current) status = "completed";
 
-          logTimerEvent({
-            habitName, targetDuration: totalSeconds, actualTime: Math.round(actualTime),
-            status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
-          });
+          if (delta > 1) {
+            logTimerEvent({
+              habitName, targetDuration: totalSeconds, actualTime: Math.round(delta),
+              status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
+            });
+          }
         }
 
         // Reset to fresh state for the new day
@@ -269,6 +275,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
         setDisplayRemaining(totalSeconds);
         setDisplayStopwatch(0);
         completionFiredRef.current = false;
+        loggedActualTimeRef.current = 0;
         timerDayRef.current = currentDay;
         deleteServerTimerState(habitId);
         logActivity({ action: "timer_reset", habitName, detail: "Auto-reset at midnight" });
@@ -313,11 +320,15 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
             sendNotification("⏰ Timer Complete!", `${habitName} timer has finished!`);
             if (onCompleteRef.current) onCompleteRef.current(habitId, habitName);
             logActivity({ action: "timer_completed", habitName });
-            logTimerEvent({
-              habitName, targetDuration: totalSeconds,
-              actualTime: totalSeconds, status: "completed",
-              isOpenEnded: false, extraTime: 0,
-            });
+            const completionDelta = totalSeconds - loggedActualTimeRef.current;
+            if (completionDelta > 1) {
+              logTimerEvent({
+                habitName, targetDuration: totalSeconds,
+                actualTime: Math.round(completionDelta), status: "completed",
+                isOpenEnded: false, extraTime: 0,
+              });
+            }
+            loggedActualTimeRef.current = totalSeconds;
 
             // Save completed state to server
             const state = {
@@ -403,10 +414,11 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     let newGoal = goalReached;
 
     if (displayRemaining === 0 && phase === "countdown" && !isOpenEnded) {
-      // Restart after completion
+      // Restart after completion — reset logged time tracker
       newElapsed = 0;
       newGoal = false;
       completionFiredRef.current = false;
+      loggedActualTimeRef.current = 0;
     }
 
     // Record the day this timer session belongs to
@@ -434,9 +446,12 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     const elapsed = computeElapsed();
     const now = Date.now();
 
+    const swTime = phase === "stopwatch"
+      ? stopwatchTime + (isRunning && startedAt > 0 ? (now - startedAt) / 1000 : 0)
+      : 0;
+
     if (phase === "stopwatch") {
-      const swElapsed = stopwatchTime + (isRunning && startedAt > 0 ? (now - startedAt) / 1000 : 0);
-      setStopwatchTime(Math.max(0, swElapsed));
+      setStopwatchTime(Math.max(0, swTime));
     }
 
     setElapsedBeforePause(elapsed);
@@ -444,11 +459,25 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     setIsRunning(false);
     logActivity({ action: "timer_paused", habitName });
 
+    // ── Log unlogged time to timer history on pause ──
+    const currentActualTime = phase === "countdown"
+      ? Math.min(elapsed, totalSeconds)
+      : totalSeconds + swTime;
+    const delta = currentActualTime - loggedActualTimeRef.current;
+    if (delta > 1) {
+      let status = "partial";
+      if (goalReached && swTime > 0) status = "exceeded";
+      else if (goalReached) status = "completed";
+
+      logTimerEvent({
+        habitName, targetDuration: totalSeconds, actualTime: Math.round(delta),
+        status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
+      });
+      loggedActualTimeRef.current = currentActualTime;
+    }
+
     // Save to server
     const remaining = phase === "countdown" ? Math.max(0, totalSeconds - elapsed) : 0;
-    const swTime = phase === "stopwatch"
-      ? stopwatchTime + (isRunning && startedAt > 0 ? (now - startedAt) / 1000 : 0)
-      : 0;
 
     saveServerTimerState(habitId, {
       remaining, isRunning: false, phase,
@@ -456,29 +485,33 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
       startedAt: 0, elapsedBeforePause: elapsed,
       totalSeconds, timerDate: getTodayKey(),
     });
-  }, [computeElapsed, phase, stopwatchTime, isRunning, startedAt, totalSeconds, goalReached, habitName, habitId]);
+  }, [computeElapsed, phase, stopwatchTime, isRunning, startedAt, totalSeconds, goalReached, habitName, habitId, isOpenEnded]);
 
   const reset = useCallback(() => {
-    // Log history for any time that was actually spent before resetting
+    // Log any remaining unlogged time before resetting
     const elapsed = computeElapsed();
     if (elapsed > 0) {
-      const actualTime = phase === "countdown"
-        ? Math.min(elapsed, totalSeconds)
-        : totalSeconds + (stopwatchTime + (startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0));
-
-      let status = "incomplete";
       const swTime = phase === "stopwatch"
         ? stopwatchTime + (startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0)
         : 0;
-      if (goalReached && swTime > 0) status = "exceeded";
-      else if (goalReached) status = "completed";
+      const actualTime = phase === "countdown"
+        ? Math.min(elapsed, totalSeconds)
+        : totalSeconds + swTime;
 
-      logTimerEvent({
-        habitName, targetDuration: totalSeconds, actualTime: Math.round(actualTime),
-        status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
-      });
+      const delta = actualTime - loggedActualTimeRef.current;
+      if (delta > 1) {
+        let status = "incomplete";
+        if (goalReached && swTime > 0) status = "exceeded";
+        else if (goalReached) status = "completed";
+
+        logTimerEvent({
+          habitName, targetDuration: totalSeconds, actualTime: Math.round(delta),
+          status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
+        });
+      }
     }
 
+    loggedActualTimeRef.current = 0;
     setIsRunning(false);
     setPhase("countdown");
     setStartedAt(0);
@@ -499,23 +532,27 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     const elapsed = computeElapsed();
     setIsRunning(false);
 
-    const actualTime = phase === "countdown"
-      ? Math.min(elapsed, totalSeconds)
-      : totalSeconds + (stopwatchTime + (startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0));
-
-    let status = "partial";
     const swTime = phase === "stopwatch"
       ? stopwatchTime + (startedAt > 0 ? (Date.now() - startedAt) / 1000 : 0)
       : 0;
-    if (goalReached && swTime > 0) status = "exceeded";
-    else if (goalReached) status = "completed";
+    const actualTime = phase === "countdown"
+      ? Math.min(elapsed, totalSeconds)
+      : totalSeconds + swTime;
 
-    logTimerEvent({
-      habitName, targetDuration: totalSeconds, actualTime: Math.round(actualTime),
-      status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
-    });
+    const delta = actualTime - loggedActualTimeRef.current;
+    if (delta > 1) {
+      let status = "partial";
+      if (goalReached && swTime > 0) status = "exceeded";
+      else if (goalReached) status = "completed";
+
+      logTimerEvent({
+        habitName, targetDuration: totalSeconds, actualTime: Math.round(delta),
+        status, isOpenEnded, extraTime: Math.round(Math.max(0, swTime)),
+      });
+    }
     logActivity({ action: "timer_stopped", habitName });
 
+    loggedActualTimeRef.current = 0;
     setPhase("countdown");
     setStartedAt(0);
     setElapsedBeforePause(0);
