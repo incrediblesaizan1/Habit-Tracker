@@ -17,6 +17,7 @@ export default function ExpensesPage() {
   const now = new Date();
 
   const [transactions, setTransactions] = useState([]);
+  const [allTransactions, setAllTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [goalAmount, setGoalAmount] = useState(0);
   const [currentBalance, setCurrentBalance] = useState(0);
@@ -38,13 +39,18 @@ export default function ExpensesPage() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [txRes, goalRes] = await Promise.all([
+        const [txRes, allTxRes, goalRes] = await Promise.all([
           fetch(`/api/expenses?month=${viewMonth}&year=${viewYear}`),
+          fetch("/api/expenses"),
           fetch("/api/earning-goal"),
         ]);
         if (txRes.ok) {
           const data = await txRes.json();
           setTransactions(Array.isArray(data) ? data : []);
+        }
+        if (allTxRes.ok) {
+          const allData = await allTxRes.json();
+          setAllTransactions(Array.isArray(allData) ? allData : []);
         }
         if (goalRes.ok) {
           const g = await goalRes.json();
@@ -85,6 +91,7 @@ export default function ExpensesPage() {
       if (res.ok) {
         const newTx = await res.json();
         setTransactions((prev) => [newTx, ...prev]);
+        setAllTransactions((prev) => [newTx, ...prev]);
         const amt = parseFloat(formAmount);
         const newBalance = formType === "expense" ? currentBalance - amt : currentBalance + amt;
         setCurrentBalance(newBalance);
@@ -110,6 +117,7 @@ export default function ExpensesPage() {
       const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
       if (res.ok) {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
+          setAllTransactions((prev) => prev.filter((t) => t.id !== id));
         if (txToDelete) {
           const newBalance = txToDelete.type === "expense" ? currentBalance + txToDelete.amount : currentBalance - txToDelete.amount;
           setCurrentBalance(newBalance);
@@ -263,15 +271,15 @@ export default function ExpensesPage() {
       </div>
 
       <div className="expense-transactions-section">
-        <h3 className="expense-tx-title">Recent Transactions <span className="expense-tx-count">{transactions.length}</span></h3>
-        {transactions.length === 0 ? (
-          <div className="expense-empty"><div className="expense-empty-icon">📝</div><p>No transactions yet for {MONTH_NAMES[viewMonth]} {viewYear}</p></div>
+        <h3 className="expense-tx-title">All Transactions <span className="expense-tx-count">{allTransactions.length}</span></h3>
+        {allTransactions.length === 0 ? (
+          <div className="expense-empty"><div className="expense-empty-icon">📝</div><p>No transactions yet</p></div>
         ) : (
           <motion.div className="expense-tx-list" initial="hidden" animate="show" variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } }}>
             <AnimatePresence>
-              {transactions.map((tx) => {
+              {allTransactions.map((tx) => {
                 const d = new Date(tx.date);
-                const dateLabel = d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+                const dateLabel = d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
                 const timeLabel = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
                 return (
                   <motion.div key={tx.id} className={`expense-tx-item ${tx.type}`} variants={{ hidden: { opacity: 0, x: -10 }, show: { opacity: 1, x: 0 } }} exit={{ opacity: 0, x: 20 }} layout>
