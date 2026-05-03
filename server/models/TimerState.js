@@ -13,6 +13,7 @@ const TimerStateSchema = new mongoose.Schema({
   elapsedBeforePause: { type: Number, default: 0 },
   totalSeconds: { type: Number, default: 0 },
   timerDate: { type: String, default: "" },
+  loggedActualTime: { type: Number, default: 0 },
 }, {
   timestamps: true,
 });

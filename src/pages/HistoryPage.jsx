@@ -81,9 +81,13 @@ export default function HistoryPage() {
   // ─── Group timer history by date, aggregate per task per day ───
   const groupedHistory = useMemo(() => {
     // Group entries by date → then by task name, summing actual time
+    // Filter out "snapshot" entries — those are daily summaries that would
+    // double-count time already logged via pause/reset/stop events.
     const dateMap = {};
 
     timerHistory.forEach((entry) => {
+      if (entry.status === "snapshot") return; // skip snapshot duplicates
+
       const dateKey = getDateKey(entry.timestamp);
       if (!dateMap[dateKey]) {
         dateMap[dateKey] = {};

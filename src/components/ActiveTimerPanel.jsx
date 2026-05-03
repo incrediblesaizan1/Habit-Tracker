@@ -174,6 +174,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
         elapsedBeforePause: 0,
         stopwatchTime: 0,
         goalReached: false,
+        loggedActualTime: 0,
       };
     }
     if (!serverSnapshot) {
@@ -184,6 +185,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
         elapsedBeforePause: 0,
         stopwatchTime: 0,
         goalReached: false,
+        loggedActualTime: 0,
       };
     }
     return {
@@ -193,6 +195,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
       elapsedBeforePause: serverSnapshot.elapsedBeforePause || 0,
       stopwatchTime: serverSnapshot.stopwatchTime || 0,
       goalReached: serverSnapshot.goalReached || false,
+      loggedActualTime: serverSnapshot.loggedActualTime || 0,
     };
   };
 
@@ -220,8 +223,9 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
   const completionFiredRef = useRef(false);
   const midnightResetDoneRef = useRef(false);
   // Track how much actualTime has already been logged to history for this session
-  // to avoid double-counting when pause/reset/stop all log history
-  const loggedActualTimeRef = useRef(0);
+  // to avoid double-counting when pause/reset/stop all log history.
+  // CRITICAL: initialized from server snapshot so it survives page refreshes.
+  const loggedActualTimeRef = useRef(initial.current.loggedActualTime);
 
   // ── Compute current elapsed seconds from timestamps ──
   const computeElapsed = useCallback(() => {
@@ -301,13 +305,14 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
             if (onCompleteRef.current) onCompleteRef.current(habitId, habitName);
             logActivity({ action: "timer_goal_reached", habitName });
 
-            // Save transition to server
+            // Save transition to server (include loggedActualTime)
             const now = Date.now();
             const state = {
               remaining: 0, isRunning: true, phase: "stopwatch",
               stopwatchTime: overflowTime, goalReached: true,
               startedAt: now, elapsedBeforePause: 0,
               totalSeconds, timerDate: getTodayKey(),
+              loggedActualTime: loggedActualTimeRef.current,
             };
             saveServerTimerState(habitId, state);
           } else {
@@ -330,12 +335,13 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
             }
             loggedActualTimeRef.current = totalSeconds;
 
-            // Save completed state to server
+            // Save completed state to server (include loggedActualTime)
             const state = {
               remaining: 0, isRunning: false, phase: "countdown",
               stopwatchTime: 0, goalReached: true,
               startedAt: 0, elapsedBeforePause: totalSeconds,
               totalSeconds, timerDate: getTodayKey(),
+              loggedActualTime: loggedActualTimeRef.current,
             };
             saveServerTimerState(habitId, state);
 
@@ -431,13 +437,14 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     setIsRunning(true);
     logActivity({ action: "timer_started", habitName });
 
-    // Save to server
+    // Save to server (include loggedActualTime so it survives page refreshes)
     saveServerTimerState(habitId, {
       remaining: Math.max(0, totalSeconds - newElapsed),
       isRunning: true, phase: newPhase,
       stopwatchTime: stopwatchTime, goalReached: newGoal,
       startedAt: now, elapsedBeforePause: newElapsed,
       totalSeconds, timerDate: getTodayKey(),
+      loggedActualTime: loggedActualTimeRef.current,
     });
   }, [phase, elapsedBeforePause, goalReached, displayRemaining, isOpenEnded, stopwatchTime, totalSeconds, habitName, habitId]);
 
@@ -476,7 +483,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
       loggedActualTimeRef.current = currentActualTime;
     }
 
-    // Save to server
+    // Save to server (include loggedActualTime so it survives page refreshes)
     const remaining = phase === "countdown" ? Math.max(0, totalSeconds - elapsed) : 0;
 
     saveServerTimerState(habitId, {
@@ -484,6 +491,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
       stopwatchTime: Math.max(0, swTime), goalReached,
       startedAt: 0, elapsedBeforePause: elapsed,
       totalSeconds, timerDate: getTodayKey(),
+      loggedActualTime: loggedActualTimeRef.current,
     });
   }, [computeElapsed, phase, stopwatchTime, isRunning, startedAt, totalSeconds, goalReached, habitName, habitId, isOpenEnded]);
 
@@ -524,7 +532,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     completionFiredRef.current = false;
     logActivity({ action: "timer_reset", habitName });
 
-    // Delete from server
+    // Delete from server (clears loggedActualTime too)
     deleteServerTimerState(habitId);
   }, [computeElapsed, phase, totalSeconds, stopwatchTime, startedAt, goalReached, isOpenEnded, habitName, habitId]);
 
@@ -563,7 +571,7 @@ function useTimerState(totalSeconds, isOpenEnded, habitName, habitId, onComplete
     setDisplayStopwatch(0);
     completionFiredRef.current = false;
 
-    // Delete from server
+    // Delete from server (clears loggedActualTime too)
     deleteServerTimerState(habitId);
   }, [computeElapsed, phase, totalSeconds, stopwatchTime, startedAt, goalReached, isOpenEnded, habitName, habitId]);
 

@@ -23,6 +23,7 @@ router.get("/", async (req, res) => {
         elapsedBeforePause: s.elapsedBeforePause || 0,
         totalSeconds: s.totalSeconds || 0,
         timerDate: s.timerDate || "",
+        loggedActualTime: s.loggedActualTime || 0,
       };
     }
     res.json(map);
@@ -50,6 +51,7 @@ router.post("/", async (req, res) => {
       elapsedBeforePause: req.body.elapsedBeforePause ?? 0,
       totalSeconds: req.body.totalSeconds ?? 0,
       timerDate: req.body.timerDate ?? "",
+      loggedActualTime: req.body.loggedActualTime ?? 0,
     };
     await TimerState.findOneAndUpdate(
       { userId, habitId },
